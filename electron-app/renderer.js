@@ -2,19 +2,101 @@ let currentTab = 'chat';
 let chatHistory = [];
 let knowledgeList = [];
 let isProcessing = false;
+let isVoiceRecording = false;
+let currentVoiceText = '';
+
+const DEFAULT_MODEL = 'Qwen/Qwen3-VL-32B-Instruct';
+const DEFAULT_DESKTOP_PATH = 'C:\\Users\\Administrator\\Desktop';
+const DEFAULT_DOWNLOADS_PATH = 'C:\\Users\\Administrator\\Downloads';
 
 async function init() {
   await loadKnowledge();
   await loadConfig();
   renderChatHistory();
   renderKnowledgeList();
+  setupVoiceListeners();
+}
+
+function setupVoiceListeners() {
+  window.electronAPI.onVoiceStatus((event, data) => {
+    console.log('语音状态:', data);
+    if (data.status === 'started') {
+      isVoiceRecording = true;
+      updateVoiceButtonState(true);
+    } else if (data.status === 'stopped') {
+      isVoiceRecording = false;
+      updateVoiceButtonState(false);
+    }
+  });
+  
+  window.electronAPI.onVoiceResult((event, data) => {
+    console.log('语音识别结果:', data);
+    const inputField = document.getElementById('message-input');
+    if (inputField) {
+      if (data.isFinal) {
+        currentVoiceText = data.text;
+        inputField.value = data.text;
+        inputField.focus();
+      } else {
+        inputField.value = data.text + '...';
+        inputField.focus();
+      }
+    }
+  });
+  
+  window.electronAPI.onVoiceError((event, data) => {
+    console.error('语音识别错误:', data);
+    alert('语音识别错误: ' + data.error);
+    isVoiceRecording = false;
+    updateVoiceButtonState(false);
+  });
+}
+
+function updateVoiceButtonState(isRecording) {
+  const voiceButton = document.getElementById('voice-button');
+  const voiceStatus = document.getElementById('voice-status');
+  const voiceText = voiceButton.querySelector('.voice-text');
+  
+  if (voiceButton) {
+    if (isRecording) {
+      voiceButton.classList.add('recording');
+      voiceText.textContent = '结束输入';
+      if (voiceStatus) {
+        voiceStatus.style.display = 'flex';
+      }
+    } else {
+      voiceButton.classList.remove('recording');
+      voiceText.textContent = '开始输入';
+      if (voiceStatus) {
+        voiceStatus.style.display = 'none';
+      }
+    }
+  }
+}
+
+async function toggleVoiceRecording() {
+  try {
+    if (isVoiceRecording) {
+      const result = await window.electronAPI.stopVoiceRecognition();
+      if (!result.success) {
+        alert('停止录音失败: ' + result.error);
+      }
+    } else {
+      const result = await window.electronAPI.startVoiceRecognition();
+      if (!result.success) {
+        alert('启动录音失败: ' + result.error);
+      }
+    }
+  } catch (error) {
+    alert('语音识别操作失败: ' + error.message);
+  }
 }
 
 async function loadConfig() {
   try {
     const config = await window.electronAPI.loadConfig();
     if (config) {
-      document.getElementById('model-name').value = config.model || 'Qwen/Qwen3.5-35B-A3B';
+      document.getElementById('model-name').value = config.model || DEFAULT_MODEL;
       document.getElementById('desktop-path').value = config.desktopPath || '';
       document.getElementById('downloads-path').value = config.downloadsPath || '';
     }
@@ -37,9 +119,9 @@ async function clearHistory() {
 async function saveConfig() {
   try {
     const config = {
-      model: document.getElementById('model-name').value || 'Qwen/Qwen3.5-35B-A3B',
-      desktopPath: document.getElementById('desktop-path').value || 'C:\\Users\\Administrator\\Desktop',
-      downloadsPath: document.getElementById('downloads-path').value || 'C:\\Users\\Administrator\\Downloads'
+      model: document.getElementById('model-name').value || DEFAULT_MODEL,
+      desktopPath: document.getElementById('desktop-path').value || DEFAULT_DESKTOP_PATH,
+      downloadsPath: document.getElementById('downloads-path').value || DEFAULT_DOWNLOADS_PATH
     };
 
     const result = await window.electronAPI.saveConfig(config);
@@ -211,61 +293,7 @@ async function sendMessage() {
   }
 }
 
-function renderChatHistory() {
-  const container = document.getElementById('chat-messages');
-  
-  if (chatHistory.length === 0) {
-    container.innerHTML = `
-      <div class="empty-state">
-        <p>暂无对话历史</p>
-      </div>
-    `;
-    return;
-  }
-
-  chatHistory.forEach((msg, index) => {
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `message ${msg.role}`;
-    
-    let toolCallsHtml = '';
-    if (msg.toolCalls && msg.toolCalls.length > 0) {
-      toolCallsHtml = `
-        <div class="tool-calls">
-          <div class="tool-calls-title">🔧 工具调用 (${msg.toolCalls.length})</div>
-          ${msg.toolCalls.map(tc => `
-            <div class="tool-call-item">
-              <div class="tool-call-name">${tc.name}</div>
-              <div class="tool-call-args">${escapeHtml(JSON.stringify(tc.args, null, 2))}</div>
-            </div>
-          `).join('')}
-        </div>
-      `;
-    }
-
-    const time = new Date(msg.timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-
-    messageDiv.innerHTML = `
-      <div class="message-bubble">
-        ${formatMessage(msg.content)}
-        ${toolCallsHtml}
-      </div>
-      <div class="message-time">${time}</div>
-    `;
-
-    container.appendChild(messageDiv);
-  });
-  
-  container.scrollTop = container.scrollHeight;
-}
-
-function addMessageToChat(role, content, toolCalls = []) {
-  const container = document.getElementById('chat-messages');
-  
-  const emptyState = container.querySelector('.empty-state');
-  if (emptyState) {
-    emptyState.remove();
-  }
-
+function createMessageElement(role, content, toolCalls = [], timestamp = null) {
   const messageDiv = document.createElement('div');
   messageDiv.className = `message ${role}`;
 
@@ -284,7 +312,7 @@ function addMessageToChat(role, content, toolCalls = []) {
     `;
   }
 
-  const time = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+  const time = (timestamp || new Date()).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
 
   messageDiv.innerHTML = `
     <div class="message-bubble">
@@ -294,7 +322,37 @@ function addMessageToChat(role, content, toolCalls = []) {
     <div class="message-time">${time}</div>
   `;
 
-  container.appendChild(messageDiv);
+  return messageDiv;
+}
+
+function renderChatHistory() {
+  const container = document.getElementById('chat-messages');
+  
+  if (chatHistory.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <p>暂无对话历史</p>
+      </div>
+    `;
+    return;
+  }
+
+  chatHistory.forEach(msg => {
+    container.appendChild(createMessageElement(msg.role, msg.content, msg.toolCalls, new Date(msg.timestamp)));
+  });
+  
+  container.scrollTop = container.scrollHeight;
+}
+
+function addMessageToChat(role, content, toolCalls = []) {
+  const container = document.getElementById('chat-messages');
+  
+  const emptyState = container.querySelector('.empty-state');
+  if (emptyState) {
+    emptyState.remove();
+  }
+
+  container.appendChild(createMessageElement(role, content, toolCalls));
   container.scrollTop = container.scrollHeight;
 }
 

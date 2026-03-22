@@ -1,6 +1,6 @@
 {
   "modelType": "api",
-  "model": "Qwen/Qwen3.5-35B-A3B",
+  "model": "Qwen/Qwen3-VL-32B-Instruct",
   "desktopPath": "C:\\Users\\Administrator\\Desktop",
   "downloadsPath": "C:\\Users\\Administrator\\Downloads"
 }

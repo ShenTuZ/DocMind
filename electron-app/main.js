@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { spawn } = require('child_process');
 const { Client } = require('@modelcontextprotocol/sdk/client/index.js');
 const { StdioClientTransport } = require('@modelcontextprotocol/sdk/client/stdio.js');
 require('dotenv').config();
@@ -9,9 +10,21 @@ let mainWindow;
 let mcpClient = null;
 let mcpTransport = null;
 let tools = [];
+let voiceProcess = null;
+let cachedConfig = null;
 
 const configPath = path.join(__dirname, 'config.json');
 const knowledgePath = path.join(__dirname, 'knowledge.json');
+
+const DEFAULT_CONFIG = {
+  modelType: 'api',
+  apiUrl: 'https://api.siliconflow.cn/v1/chat/completions',
+  model: 'Qwen/Qwen3-VL-32B-Instruct',
+  desktopPath: 'C:\\Users\\Administrator\\Desktop',
+  downloadsPath: 'C:\\Users\\Administrator\\Downloads'
+};
+
+const PYTHON_COMMAND = process.platform === 'win32' ? 'D:\\anaconda3\\python.exe' : 'python3';
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -71,6 +84,10 @@ async function connectMCP() {
 }
 
 function loadConfigSync() {
+  if (cachedConfig) {
+    return cachedConfig;
+  }
+
   try {
     const envPath = path.join(__dirname, '.env');
     if (fs.existsSync(envPath)) {
@@ -84,27 +101,24 @@ function loadConfigSync() {
         }
       });
       
-      return {
-        modelType: 'api',
-        apiKey: envVars.API_KEY || 'sk-wzinqxnzpnngnwuxmlumohzwlxlofdncobyuwzjytofokewn',
-        apiUrl: 'https://api.siliconflow.cn/v1/chat/completions',
-        model: envVars.API_MODEL_NAME || 'Qwen/Qwen3.5-35B-A3B',
-        desktopPath: envVars.DESKTOP_PATH || 'C:\\Users\\Administrator\\Desktop',
-        downloadsPath: envVars.DOWNLOADS_PATH || 'C:\\Users\\Administrator\\Downloads'
+      cachedConfig = {
+        ...DEFAULT_CONFIG,
+        apiKey: envVars.API_KEY || process.env.API_KEY,
+        model: envVars.API_MODEL_NAME || DEFAULT_CONFIG.model,
+        desktopPath: envVars.DESKTOP_PATH || DEFAULT_CONFIG.desktopPath,
+        downloadsPath: envVars.DOWNLOADS_PATH || DEFAULT_CONFIG.downloadsPath
       };
+      return cachedConfig;
     }
   } catch (error) {
     console.error('加载配置失败:', error);
   }
   
-  return {
-    modelType: 'api',
-    apiKey: 'sk-wzinqxnzpnngnwuxmlumohzwlxlofdncobyuwzjytofokewn',
-    apiUrl: 'https://api.siliconflow.cn/v1/chat/completions',
-    model: 'Qwen/Qwen3.5-35B-A3B',
-    desktopPath: 'C:\\Users\\Administrator\\Desktop',
-    downloadsPath: 'C:\\Users\\Administrator\\Downloads'
+  cachedConfig = {
+    ...DEFAULT_CONFIG,
+    apiKey: process.env.API_KEY
   };
+  return cachedConfig;
 }
 
 function loadKnowledgeSync() {
@@ -130,6 +144,33 @@ function getToolDefinitions() {
   }));
 }
 
+function parseToolCallsFromReasoning(reasoningContent) {
+  if (!reasoningContent) return null;
+  
+  const toolCallMatch = reasoningContent.match(/<tool_call>\s*(\{.*?\})\s*<\/tool_call>/s);
+  if (!toolCallMatch) return null;
+  
+  try {
+    const toolCallData = JSON.parse(toolCallMatch[1]);
+    return {
+      tool_calls: [
+        {
+          id: `call_${Date.now()}`,
+          type: 'function',
+          function: {
+            name: toolCallData.name,
+            arguments: JSON.stringify(toolCallData.arguments)
+          }
+        }
+      ],
+      content: reasoningContent.replace(/<tool_call>.*?<\/tool_call>/s, '').trim()
+    };
+  } catch (error) {
+    console.error('解析工具调用失败:', error);
+    return null;
+  }
+}
+
 async function callSiliconFlowAPI(config, messages, tools) {
   try {
     const requestBody = {
@@ -144,19 +185,22 @@ async function callSiliconFlowAPI(config, messages, tools) {
       requestBody.tools = tools;
     }
 
-    console.log('发送请求体:', JSON.stringify(requestBody, null, 2));
+    console.log('API 请求配置:', {
+      url: config.apiUrl,
+      model: config.model,
+      messagesCount: messages.length
+    });
 
-    const apiKey = process.env.API_KEY || 'sk-wzinqxnzpnngnwuxmlumohzwlxlofdncobyuwzjytofokewn';
-    const apiUrl = 'https://api.siliconflow.cn/v1/chat/completions';
-
-    const response = await fetch(apiUrl, {
+    const response = await fetch(config.apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
+        'Authorization': `Bearer ${config.apiKey}`
       },
       body: JSON.stringify(requestBody)
     });
+
+    console.log('API 响应状态:', response.status);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -165,7 +209,28 @@ async function callSiliconFlowAPI(config, messages, tools) {
     }
 
     const data = await response.json();
-    return data.choices[0].message;
+    console.log('API 响应数据:', JSON.stringify(data, null, 2));
+    
+    if (!data.choices || data.choices.length === 0) {
+      throw new Error('API 响应格式错误：没有返回choices');
+    }
+    
+    const message = data.choices[0].message;
+    
+    if (!message.content && message.reasoning_content) {
+      message.content = message.reasoning_content;
+    }
+    
+    if (!message.tool_calls && message.reasoning_content) {
+      const parsed = parseToolCallsFromReasoning(message.reasoning_content);
+      if (parsed) {
+        message.tool_calls = parsed.tool_calls;
+        message.content = parsed.content;
+        console.log('解析工具调用成功:', message.tool_calls);
+      }
+    }
+    
+    return message;
   } catch (error) {
     console.error('❌ SiliconFlow API 调用失败:', error.message);
     throw error;
@@ -192,6 +257,7 @@ ipcMain.handle('save-config', async (event, config) => {
     }
     
     fs.writeFileSync(envPath, envContent, 'utf8');
+    cachedConfig = null;
     return { success: true };
   } catch (error) {
     return { success: false, error: error.message };
@@ -213,6 +279,87 @@ ipcMain.handle('save-knowledge', async (event, data) => {
 
 ipcMain.handle('clear-history', async (event) => {
   return { success: true };
+});
+
+function handleVoiceOutput(event, output) {
+  const trimmedOutput = output.trim();
+  console.log('语音识别输出:', trimmedOutput);
+  
+  if (trimmedOutput.startsWith('STARTED')) {
+    event.sender.send('voice-status', { status: 'started' });
+  } else if (trimmedOutput.startsWith('FINAL:')) {
+    const text = trimmedOutput.substring(6);
+    event.sender.send('voice-result', { text: text, isFinal: true });
+  } else if (trimmedOutput.startsWith('RESULT:')) {
+    const text = trimmedOutput.substring(7);
+    event.sender.send('voice-result', { text: text, isFinal: false });
+  } else if (trimmedOutput.startsWith('STOPPED')) {
+    event.sender.send('voice-status', { status: 'stopped' });
+  } else if (trimmedOutput.startsWith('ERROR:')) {
+    const error = trimmedOutput.substring(6);
+    event.sender.send('voice-error', { error: error });
+  }
+}
+
+function handleVoiceError(event, errorText) {
+  console.error('语音识别stderr:', errorText);
+  if (errorText.includes('ERROR') || errorText.includes('error') || errorText.includes('Error')) {
+    event.sender.send('voice-error', { error: errorText });
+  }
+}
+
+ipcMain.handle('start-voice-recognition', async (event) => {
+  try {
+    if (voiceProcess) {
+      return { success: false, error: '语音识别已在运行' };
+    }
+
+    const voiceScriptPath = path.join(__dirname, 'voice_recognition.py');
+    
+    voiceProcess = spawn(PYTHON_COMMAND, [voiceScriptPath], {
+      cwd: __dirname,
+      stdio: ['pipe', 'pipe', 'pipe']
+    });
+
+    voiceProcess.stdout.on('data', (data) => {
+      handleVoiceOutput(event, data.toString('utf8'));
+    });
+
+    voiceProcess.stderr.on('data', (data) => {
+      handleVoiceError(event, data.toString('utf8'));
+    });
+
+    voiceProcess.on('close', (code) => {
+      console.log('语音识别进程退出，代码:', code);
+      voiceProcess = null;
+      event.sender.send('voice-status', { status: 'stopped' });
+    });
+
+    voiceProcess.on('error', (error) => {
+      console.error('语音识别进程错误:', error);
+      voiceProcess = null;
+      event.sender.send('voice-error', { error: error.message });
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error('启动语音识别失败:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('stop-voice-recognition', async (event) => {
+  try {
+    if (voiceProcess) {
+      voiceProcess.kill();
+      voiceProcess = null;
+      return { success: true };
+    }
+    return { success: false, error: '语音识别未运行' };
+  } catch (error) {
+    console.error('停止语音识别失败:', error);
+    return { success: false, error: error.message };
+  }
 });
 
 ipcMain.handle('send-message', async (event, userMessage) => {
@@ -237,7 +384,7 @@ ipcMain.handle('send-message', async (event, userMessage) => {
 
 ${tools.map(tool => `- ${tool.name}: ${tool.description}`).join('\n')}
 
-当用户需要操作文件时，请使用相应的工具。工具调用格式如下：
+当用户需要操作文件时，必须使用工具调用。工具调用格式如下：
 {
   "tool_calls": [
     {
@@ -245,13 +392,18 @@ ${tools.map(tool => `- ${tool.name}: ${tool.description}`).join('\n')}
       "type": "function",
       "function": {
         "name": "工具名称",
-        "arguments": "JSON 格式的参数字符串"
+        "arguments": { "参数名": "参数值" }
       }
     }
   ]
 }
 
-如果不需要使用工具，直接回答用户即可。
+重要提示：
+- 当用户询问文件操作时，必须返回 tool_calls 字段
+- tool_calls 必须是一个数组
+- arguments 必须是 JSON 对象，不是字符串
+- 如果不需要使用工具，直接在 content 字段中回答
+
 注意：
 1. 只能访问 ${config.desktopPath} 和 ${config.downloadsPath} 目录
 2. 文件路径必须是完整路径
@@ -362,5 +514,8 @@ app.on('window-all-closed', () => {
 app.on('before-quit', async () => {
   if (mcpClient) {
     await mcpClient.close();
+  }
+  if (voiceProcess) {
+    voiceProcess.kill();
   }
 });

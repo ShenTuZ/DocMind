@@ -6,5 +6,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   loadKnowledge: () => ipcRenderer.invoke('load-knowledge'),
   saveKnowledge: (data) => ipcRenderer.invoke('save-knowledge', data),
   sendMessage: (data) => ipcRenderer.invoke('send-message', data),
-  clearHistory: () => ipcRenderer.invoke('clear-history')
+  clearHistory: () => ipcRenderer.invoke('clear-history'),
+  startVoiceRecognition: () => ipcRenderer.invoke('start-voice-recognition'),
+  stopVoiceRecognition: () => ipcRenderer.invoke('stop-voice-recognition'),
+  onVoiceStatus: (callback) => ipcRenderer.on('voice-status', callback),
+  onVoiceResult: (callback) => ipcRenderer.on('voice-result', callback),
+  onVoiceError: (callback) => ipcRenderer.on('voice-error', callback)
 });
