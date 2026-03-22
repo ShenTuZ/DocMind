@@ -1,0 +1,27 @@
+{
+  "name": "mcp-electron-app",
+  "version": "1.0.0",
+  "description": "MCP AI Agent - Electron 应用",
+  "main": "main.js",
+  "scripts": {
+    "start": "set NODE_OPTIONS=--max-old-space-size=4096 && chcp 65001 > nul && electron .",
+    "dev": "set NODE_OPTIONS=--max-old-space-size=4096 && chcp 65001 > nul && electron . --dev",
+    "build": "electron-builder"
+  },
+  "keywords": [
+    "electron",
+    "mcp",
+    "ai"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "dotenv": "^17.3.1",
+    "ollama": "^0.5.1"
+  }
+}
