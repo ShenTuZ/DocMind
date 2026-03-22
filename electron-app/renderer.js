@@ -4,6 +4,7 @@ let knowledgeList = [];
 let isProcessing = false;
 let isVoiceRecording = false;
 let currentVoiceText = '';
+let currentAttachment = null;
 
 const DEFAULT_MODEL = 'Qwen/Qwen3-VL-32B-Instruct';
 const DEFAULT_DESKTOP_PATH = 'C:\\Users\\Administrator\\Desktop';
@@ -260,7 +261,7 @@ async function sendMessage() {
   const input = document.getElementById('message-input');
   const message = input.value.trim();
 
-  if (!message) {
+  if (!message && !currentAttachment) {
     return;
   }
 
@@ -269,11 +270,11 @@ async function sendMessage() {
   input.disabled = true;
   document.getElementById('send-button').disabled = true;
 
-  addMessageToChat('user', message);
+  addMessageToChat('user', message, [], currentAttachment);
   showTypingIndicator();
 
   try {
-    const result = await window.electronAPI.sendMessage(message);
+    const result = await window.electronAPI.sendMessage(message, currentAttachment);
 
     removeTypingIndicator();
 
@@ -290,12 +291,33 @@ async function sendMessage() {
     input.disabled = false;
     document.getElementById('send-button').disabled = false;
     input.focus();
+    removeAttachment();
   }
 }
 
-function createMessageElement(role, content, toolCalls = [], timestamp = null) {
+function createMessageElement(role, content, toolCalls = [], timestamp = null, attachment = null) {
   const messageDiv = document.createElement('div');
   messageDiv.className = `message ${role}`;
+
+  let attachmentHtml = '';
+  if (attachment) {
+    if (attachment.type === 'image') {
+      attachmentHtml = `
+        <div class="message-attachment">
+          <img src="${attachment.data}" alt="${attachment.name}" class="attachment-image">
+        </div>
+      `;
+    } else {
+      attachmentHtml = `
+        <div class="message-attachment">
+          <div class="attachment-file">
+            <span class="attachment-file-icon">📎</span>
+            <span class="attachment-file-name">${escapeHtml(attachment.name)}</span>
+          </div>
+        </div>
+      `;
+    }
+  }
 
   let toolCallsHtml = '';
   if (toolCalls && toolCalls.length > 0) {
@@ -316,6 +338,7 @@ function createMessageElement(role, content, toolCalls = [], timestamp = null) {
 
   messageDiv.innerHTML = `
     <div class="message-bubble">
+      ${attachmentHtml}
       ${formatMessage(content)}
       ${toolCallsHtml}
     </div>
@@ -344,7 +367,7 @@ function renderChatHistory() {
   container.scrollTop = container.scrollHeight;
 }
 
-function addMessageToChat(role, content, toolCalls = []) {
+function addMessageToChat(role, content, toolCalls = [], attachment = null) {
   const container = document.getElementById('chat-messages');
   
   const emptyState = container.querySelector('.empty-state');
@@ -352,7 +375,7 @@ function addMessageToChat(role, content, toolCalls = []) {
     emptyState.remove();
   }
 
-  container.appendChild(createMessageElement(role, content, toolCalls));
+  container.appendChild(createMessageElement(role, content, toolCalls, null, attachment));
   container.scrollTop = container.scrollHeight;
 }
 
@@ -399,6 +422,67 @@ function formatMessage(content) {
   formatted = formatted.replace(/\n/g, '<br>');
 
   return formatted;
+}
+
+function selectImage() {
+  document.getElementById('image-input').click();
+}
+
+function selectFile() {
+  document.getElementById('file-input').click();
+}
+
+function handleImageSelect(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    currentAttachment = {
+      type: 'image',
+      name: file.name,
+      data: e.target.result,
+      mimeType: file.type
+    };
+    showAttachmentPreview();
+  };
+  reader.readAsDataURL(file);
+}
+
+function handleFileSelect(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    currentAttachment = {
+      type: 'file',
+      name: file.name,
+      data: e.target.result,
+      mimeType: file.type
+    };
+    showAttachmentPreview();
+  };
+  reader.readAsDataURL(file);
+}
+
+function showAttachmentPreview() {
+  const preview = document.getElementById('attachment-preview');
+  const icon = document.getElementById('attachment-icon');
+  const name = document.getElementById('attachment-name');
+
+  if (currentAttachment) {
+    icon.textContent = currentAttachment.type === 'image' ? '🖼️' : '📎';
+    name.textContent = currentAttachment.name;
+    preview.style.display = 'block';
+  }
+}
+
+function removeAttachment() {
+  currentAttachment = null;
+  document.getElementById('attachment-preview').style.display = 'none';
+  document.getElementById('image-input').value = '';
+  document.getElementById('file-input').value = '';
 }
 
 function escapeHtml(text) {

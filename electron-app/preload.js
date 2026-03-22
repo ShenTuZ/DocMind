@@ -5,7 +5,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveConfig: (config) => ipcRenderer.invoke('save-config', config),
   loadKnowledge: () => ipcRenderer.invoke('load-knowledge'),
   saveKnowledge: (data) => ipcRenderer.invoke('save-knowledge', data),
-  sendMessage: (data) => ipcRenderer.invoke('send-message', data),
+  sendMessage: (data, attachment) => ipcRenderer.invoke('send-message', data, attachment),
   clearHistory: () => ipcRenderer.invoke('clear-history'),
   startVoiceRecognition: () => ipcRenderer.invoke('start-voice-recognition'),
   stopVoiceRecognition: () => ipcRenderer.invoke('stop-voice-recognition'),

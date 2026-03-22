@@ -362,7 +362,7 @@ ipcMain.handle('stop-voice-recognition', async (event) => {
   }
 });
 
-ipcMain.handle('send-message', async (event, userMessage) => {
+ipcMain.handle('send-message', async (event, userMessage, attachment = null) => {
   try {
     const config = loadConfigSync();
     const knowledge = loadKnowledgeSync();
@@ -380,7 +380,7 @@ ipcMain.handle('send-message', async (event, userMessage) => {
       ? `\n\n知识库信息：\n${knowledge.map(k => `- ${k.title}: ${k.content}`).join('\n')}` 
       : '';
 
-    const systemPrompt = `你是一个智能助手，可以帮助用户操作文件系统。你有以下工具可以使用：
+    let systemPrompt = `你是一个智能助手，可以帮助用户操作文件系统。你有以下工具可以使用：
 
 ${tools.map(tool => `- ${tool.name}: ${tool.description}`).join('\n')}
 
@@ -416,6 +416,14 @@ ${knowledgeText}
 
 请用中文回答用户的问题。`;
 
+    if (attachment) {
+      if (attachment.type === 'image') {
+        systemPrompt += `\n\n用户上传了一张图片：${attachment.name}，请分析图片内容。`;
+      } else {
+        systemPrompt += `\n\n用户上传了一个文件：${attachment.name}，请查看文件内容。`;
+      }
+    }
+
     const history = event.sender.history || [];
     
     let messages = [];
@@ -428,7 +436,25 @@ ${knowledgeText}
       }
     });
     
-    messages.push({ role: 'user', content: userMessage });
+    let userContent = userMessage;
+    if (attachment) {
+      if (attachment.type === 'image') {
+        messages.push({ 
+          role: 'user', 
+          content: [
+            { type: 'text', text: userMessage || '请分析这张图片' },
+            { type: 'image_url', image_url: { url: attachment.data } }
+          ]
+        });
+      } else {
+        messages.push({ 
+          role: 'user', 
+          content: userMessage || `请查看文件：${attachment.name}`
+        });
+      }
+    } else {
+      messages.push({ role: 'user', content: userMessage });
+    }
 
     let maxIterations = 5;
     let iteration = 0;

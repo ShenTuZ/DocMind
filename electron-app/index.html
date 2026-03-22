@@ -54,6 +54,14 @@
                     <div class="chat-input-area">
                         <div class="input-wrapper">
                             <input type="text" class="input-field" id="message-input" placeholder="输入您的问题，例如：列出 Desktop 目录的内容..." onkeypress="handleKeyPress(event)">
+                            <div class="upload-buttons">
+                                <button class="upload-button" onclick="selectImage()" id="image-button" title="上传图片">
+                                    <span class="upload-text">图片</span>
+                                </button>
+                                <button class="upload-button" onclick="selectFile()" id="file-button" title="上传文件">
+                                    <span class="upload-text">文件</span>
+                                </button>
+                            </div>
                             <button class="voice-button" onclick="toggleVoiceRecording()" id="voice-button" title="语音输入">
                                 <span class="voice-text">语音</span>
                             </button>
@@ -63,6 +71,13 @@
                             <button class="clear-button" onclick="clearHistory()" title="清空历史记录">
                                 ✕
                             </button>
+                        </div>
+                        <div class="attachment-preview" id="attachment-preview" style="display: none;">
+                            <div class="attachment-item" id="attachment-item">
+                                <span class="attachment-icon" id="attachment-icon"></span>
+                                <span class="attachment-name" id="attachment-name"></span>
+                                <button class="remove-attachment" onclick="removeAttachment()">✕</button>
+                            </div>
                         </div>
                         <div class="voice-status" id="voice-status" style="display: none;">
                             <div class="voice-indicator"></div>
@@ -110,6 +125,9 @@
             <button class="submit-button" onclick="saveConfig()">保存设置</button>
         </div>
     </div>
+
+    <input type="file" id="image-input" accept="image/*" style="display: none;" onchange="handleImageSelect(event)">
+    <input type="file" id="file-input" style="display: none;" onchange="handleFileSelect(event)">
 
     <script src="renderer.js"></script>
 </body>
