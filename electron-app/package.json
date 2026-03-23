@@ -1,7 +1,7 @@
 {
-  "name": "mcp-electron-app",
+  "name": "docmind-app",
   "version": "1.0.0",
-  "description": "MCP AI Agent - Electron 应用",
+  "description": "DocMind - 智能文档助手",
   "main": "main.js",
   "scripts": {
     "start": "set NODE_OPTIONS=--max-old-space-size=4096 && chcp 65001 > nul && electron .",
