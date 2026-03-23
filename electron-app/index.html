@@ -88,19 +88,44 @@
             </div>
 
             <div class="knowledge-container hidden" id="knowledge-container">
-                <div class="add-knowledge-card">
-                    <h3>添加知识</h3>
-                    <div class="form-group">
-                        <label>标题</label>
-                        <input type="text" class="form-input" id="knowledge-title" placeholder="输入标题">
-                    </div>
-                    <div class="form-group">
-                        <label>内容</label>
-                        <textarea class="form-textarea" id="knowledge-content" placeholder="输入内容"></textarea>
-                    </div>
-                    <button class="submit-button" onclick="addKnowledge()">添加到知识库</button>
+                <div class="knowledge-header">
+                    <h2>知识库管理</h2>
+                    <p>使用RAG技术处理文档，构建智能知识库</p>
                 </div>
-                <div class="knowledge-grid" id="knowledge-list">
+                
+                <div class="knowledge-upload-section">
+                    <h3>上传文档</h3>
+                    <div class="upload-area">
+                        <div class="upload-buttons-group">
+                            <button class="primary-button" onclick="selectFilesForRAG()">选择文件</button>
+                            <button class="secondary-button" onclick="selectFolderForRAG()">选择文件夹</button>
+                        </div>
+                        <p class="upload-info">支持格式：.txt, .md, .pdf, .docx</p>
+                    </div>
+                </div>
+                
+                <div class="rag-progress-section" id="rag-progress-section">
+                    <div class="progress-text" id="rag-progress-text">准备中...</div>
+                </div>
+                
+                <div class="knowledge-search-section">
+                    <h3>知识库查询</h3>
+                    <div class="search-container">
+                        <input type="text" class="search-input" id="knowledge-search-input" placeholder="输入查询内容...">
+                        <button class="search-button" onclick="searchKnowledge()">搜索</button>
+                    </div>
+                </div>
+                
+                <div class="knowledge-results-section hidden" id="knowledge-results-section">
+                    <h3>搜索结果</h3>
+                    <div class="search-results" id="search-results">
+                    </div>
+                </div>
+                
+                <div class="knowledge-list-section">
+                    <h3>文档列表</h3>
+                    <div class="knowledge-grid" id="knowledge-list">
+                    </div>
                 </div>
             </div>
         </div>
@@ -128,6 +153,8 @@
 
     <input type="file" id="image-input" accept="image/*" style="display: none;" onchange="handleImageSelect(event)">
     <input type="file" id="file-input" style="display: none;" onchange="handleFileSelect(event)">
+    <input type="file" id="rag-file-input" multiple style="display: none;" onchange="handleRAGFileSelect(event)">
+    <input type="file" id="rag-folder-input" webkitdirectory directory style="display: none;" onchange="handleRAGFolderSelect(event)">
 
     <script src="renderer.js"></script>
 </body>

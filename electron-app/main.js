@@ -521,6 +521,255 @@ ${knowledgeText}
   }
 });
 
+ipcMain.handle('process-rag-files', async (event, filePaths) => {
+  try {
+    const ragScriptPath = path.join(__dirname, 'rag_processor.py');
+    
+    if (!fs.existsSync(ragScriptPath)) {
+      throw new Error('RAG处理器文件不存在');
+    }
+    
+    const args = [ragScriptPath, 'process_files', ...filePaths];
+    
+    return new Promise((resolve, reject) => {
+      const process = spawn(PYTHON_COMMAND, args, {
+        cwd: __dirname,
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+      
+      let stdout = '';
+      let stderr = '';
+      
+      process.stdout.on('data', (data) => {
+        stdout += data.toString('utf8');
+      });
+      
+      process.stderr.on('data', (data) => {
+        stderr += data.toString('utf8');
+      });
+      
+      process.on('close', (code) => {
+        if (code === 0) {
+          try {
+            const result = JSON.parse(stdout);
+            resolve({ success: true, data: result });
+          } catch (error) {
+            resolve({ success: true, message: '处理完成' });
+          }
+        } else {
+          console.error('RAG处理失败:', stderr);
+          resolve({ success: false, error: stderr || '处理失败' });
+        }
+      });
+      
+      process.on('error', (error) => {
+        console.error('启动RAG处理器失败:', error);
+        resolve({ success: false, error: error.message });
+      });
+    });
+  } catch (error) {
+    console.error('处理RAG文件失败:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('get-knowledge-stats', async () => {
+  try {
+    const ragScriptPath = path.join(__dirname, 'rag_processor.py');
+    
+    if (!fs.existsSync(ragScriptPath)) {
+      return { documentCount: 0, chunkCount: 0, vectorCount: 0 };
+    }
+    
+    const args = [ragScriptPath, 'get_stats'];
+    
+    return new Promise((resolve, reject) => {
+      const process = spawn(PYTHON_COMMAND, args, {
+        cwd: __dirname,
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+      
+      let stdout = '';
+      let stderr = '';
+      
+      process.stdout.on('data', (data) => {
+        stdout += data.toString('utf8');
+      });
+      
+      process.stderr.on('data', (data) => {
+        stderr += data.toString('utf8');
+      });
+      
+      process.on('close', (code) => {
+        if (code === 0) {
+          try {
+            const result = JSON.parse(stdout);
+            resolve(result);
+          } catch (error) {
+            resolve({ documentCount: 0, chunkCount: 0, vectorCount: 0 });
+          }
+        } else {
+          console.error('获取知识库统计失败:', stderr);
+          resolve({ documentCount: 0, chunkCount: 0, vectorCount: 0 });
+        }
+      });
+      
+      process.on('error', (error) => {
+        console.error('启动统计获取失败:', error);
+        resolve({ documentCount: 0, chunkCount: 0, vectorCount: 0 });
+      });
+    });
+  } catch (error) {
+    console.error('获取知识库统计失败:', error);
+    return { documentCount: 0, chunkCount: 0, vectorCount: 0 };
+  }
+});
+
+ipcMain.handle('get-knowledge-files', async () => {
+  try {
+    const chunksPath = path.join(__dirname, 'rag_data', 'chunks.json');
+    
+    if (!fs.existsSync(chunksPath)) {
+      return { success: true, files: [] };
+    }
+    
+    const chunksData = fs.readFileSync(chunksPath, 'utf8');
+    const files = JSON.parse(chunksData);
+    
+    return { success: true, files: files };
+  } catch (error) {
+    console.error('获取知识库文件列表失败:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('delete-knowledge-file', async (event, filePath) => {
+  try {
+    const chunksPath = path.join(__dirname, 'rag_data', 'chunks.json');
+    const chunksContentPath = path.join(__dirname, 'rag_data', 'chunks_content.json');
+    const embeddingsPath = path.join(__dirname, 'rag_data', 'embeddings.json');
+    
+    if (!fs.existsSync(chunksPath)) {
+      return { success: false, error: '知识库文件不存在' };
+    }
+    
+    // 读取并过滤文件列表
+    const chunksData = fs.readFileSync(chunksPath, 'utf8');
+    const files = JSON.parse(chunksData);
+    
+    // 规范化路径格式以进行匹配
+    const normalizedFilePath = path.normalize(filePath);
+    
+    // 查找要删除的文件（使用规范化路径进行匹配）
+    const fileToDelete = files.find(f => {
+      const normalizedStoredPath = path.normalize(f.path);
+      return normalizedStoredPath === normalizedFilePath;
+    });
+    
+    if (!fileToDelete) {
+      console.log(`找不到要删除的文件: ${filePath}`);
+      console.log(`现有文件: ${JSON.stringify(files, null, 2)}`);
+      return { success: false, error: '文件不存在于知识库中' };
+    }
+    
+    console.log(`删除文件: ${fileToDelete.name}, 路径: ${fileToDelete.path}`);
+    
+    // 删除文件信息
+    const updatedFiles = files.filter(f => {
+      const normalizedStoredPath = path.normalize(f.path);
+      return normalizedStoredPath !== normalizedFilePath;
+    });
+    
+    // 保存更新后的文件列表
+    fs.writeFileSync(chunksPath, JSON.stringify(updatedFiles, null, 2), 'utf8');
+    console.log(`更新后的文件列表长度: ${updatedFiles.length}`);
+    
+    // 如果有文本块内容文件，也需要更新
+    if (fs.existsSync(chunksContentPath)) {
+      const chunksContent = JSON.parse(fs.readFileSync(chunksContentPath, 'utf8'));
+      const updatedChunks = chunksContent.filter(c => {
+        const normalizedChunkPath = path.normalize(c.file_path);
+        return normalizedChunkPath !== normalizedFilePath;
+      });
+      fs.writeFileSync(chunksContentPath, JSON.stringify(updatedChunks, null, 2), 'utf8');
+      console.log(`更新后的文本块数量: ${updatedChunks.length}`);
+    }
+    
+    // 如果有嵌入向量文件，也需要更新
+    if (fs.existsSync(embeddingsPath)) {
+      const embeddings = JSON.parse(fs.readFileSync(embeddingsPath, 'utf8'));
+      const updatedEmbeddings = embeddings.filter(e => {
+        const normalizedEmbeddingPath = path.normalize(e.file_path);
+        return normalizedEmbeddingPath !== normalizedFilePath;
+      });
+      fs.writeFileSync(embeddingsPath, JSON.stringify(updatedEmbeddings, null, 2), 'utf8');
+      console.log(`更新后的向量数量: ${updatedEmbeddings.length}`);
+    }
+    
+    return { success: true };
+  } catch (error) {
+    console.error('删除知识库文件失败:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('search-knowledge', async (event, query) => {
+  try {
+    const ragScriptPath = path.join(__dirname, 'rag_processor.py');
+    
+    if (!fs.existsSync(ragScriptPath)) {
+      return [];
+    }
+    
+    const args = [ragScriptPath, 'query', '--query-text', query];
+    
+    return new Promise((resolve, reject) => {
+      const process = spawn(PYTHON_COMMAND, args, {
+        cwd: __dirname,
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+      
+      let stdout = '';
+      let stderr = '';
+      
+      process.stdout.on('data', (data) => {
+        stdout += data.toString('utf8');
+      });
+      
+      process.stderr.on('data', (data) => {
+        stderr += data.toString('utf8');
+      });
+      
+      process.on('close', (code) => {
+        if (code === 0) {
+          try {
+            const result = JSON.parse(stdout);
+            if (result.success && result.results) {
+              resolve(result.results);
+            } else {
+              resolve([]);
+            }
+          } catch (error) {
+            console.error('解析搜索结果失败:', error);
+            resolve([]);
+          }
+        } else {
+          console.error('搜索知识库失败:', stderr);
+          resolve([]);
+        }
+      });
+      
+      process.on('error', (error) => {
+        console.error('搜索知识库失败:', error);
+        resolve([]);
+      });
+    });
+  } catch (error) {
+    console.error('搜索知识库失败:', error);
+    return [];
+  }
+});
+
 app.whenReady().then(() => {
   createWindow();
   

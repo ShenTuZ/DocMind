@@ -12,6 +12,7 @@ const DEFAULT_DOWNLOADS_PATH = 'C:\\Users\\Administrator\\Downloads';
 
 async function init() {
   await loadKnowledge();
+  await loadKnowledgeStats();
   await loadConfig();
   renderChatHistory();
   renderKnowledgeList();
@@ -197,27 +198,83 @@ async function saveKnowledgeData() {
   }
 }
 
-function renderKnowledgeList() {
+async function renderKnowledgeList() {
   const container = document.getElementById('knowledge-list');
   
-  if (knowledgeList.length === 0) {
+  try {
+    const result = await window.electronAPI.getKnowledgeFiles();
+    
+    if (!result.success || result.files.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <p>暂无知识库内容</p>
+        </div>
+      `;
+      return;
+    }
+
+    // 限制显示最多10个文件
+    const displayFiles = result.files.slice(0, 10);
+    const hasMore = result.files.length > 10;
+
+    container.innerHTML = displayFiles.map((file, index) => {
+      // 转义文件路径中的反斜杠，避免HTML解析问题
+      const escapedPath = file.path.replace(/\\/g, '\\\\');
+      return `
+        <div class="knowledge-card">
+          <div class="knowledge-card-title">${escapeHtml(file.name)}</div>
+          <div class="knowledge-card-meta">
+            <span>大小: ${formatFileSize(file.size)}</span>
+            <span>分块: ${file.chunks}</span>
+          </div>
+          <div class="knowledge-card-actions">
+            <button class="action-button" onclick="deleteKnowledgeFile('${escapedPath}')">删除</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // 如果有更多文件，显示提示
+    if (hasMore) {
+      container.innerHTML += `
+        <div class="more-files-info">
+          <p>还有 ${result.files.length - 10} 个文件未显示</p>
+        </div>
+      `;
+    }
+  } catch (error) {
+    console.error('加载知识库文件列表失败:', error);
     container.innerHTML = `
       <div class="empty-state">
-        <p>暂无知识库内容</p>
+        <p>加载失败</p>
       </div>
     `;
-    return;
   }
+}
 
-  container.innerHTML = knowledgeList.map(knowledge => `
-    <div class="knowledge-card">
-      <div class="knowledge-card-title">${escapeHtml(knowledge.title)}</div>
-      <div class="knowledge-card-content">${escapeHtml(knowledge.content)}</div>
-      <div class="knowledge-card-actions">
-        <button class="action-button" onclick="deleteKnowledge('${knowledge.id}')">删除</button>
-      </div>
-    </div>
-  `).join('');
+function formatFileSize(bytes) {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+async function deleteKnowledgeFile(filePath) {
+  if (!confirm('确定要删除这个文件吗？')) return;
+  
+  try {
+    const result = await window.electronAPI.deleteKnowledgeFile(filePath);
+    
+    if (result.success) {
+      alert('文件已成功删除');
+      renderKnowledgeList();
+    } else {
+      alert(`删除失败: ${result.error}`);
+    }
+  } catch (error) {
+    alert(`删除失败: ${error.message}`);
+  }
 }
 
 function switchTab(tab) {
@@ -483,6 +540,139 @@ function removeAttachment() {
   document.getElementById('attachment-preview').style.display = 'none';
   document.getElementById('image-input').value = '';
   document.getElementById('file-input').value = '';
+}
+
+function selectFilesForRAG() {
+  document.getElementById('rag-file-input').click();
+}
+
+function selectFolderForRAG() {
+  document.getElementById('rag-folder-input').click();
+}
+
+function handleRAGFileSelect(event) {
+  const files = event.target.files;
+  if (files.length === 0) return;
+  
+  const filePaths = Array.from(files).map(file => file.path);
+  processRAGFiles(filePaths);
+}
+
+function handleRAGFolderSelect(event) {
+  const files = event.target.files;
+  if (files.length === 0) return;
+  
+  const filePaths = Array.from(files).map(file => file.path);
+  processRAGFiles(filePaths);
+}
+
+async function processRAGFiles(filePaths) {
+  try {
+    isProcessing = true;
+    
+    // 显示进度区域并添加处理中样式
+    const progressSection = document.getElementById('rag-progress-section');
+    if (progressSection) {
+      progressSection.classList.remove('hidden');
+      progressSection.classList.add('processing');
+    }
+    
+    showRAGProgress(0, `开始处理 ${filePaths.length} 个文件...`);
+    
+    const result = await window.electronAPI.processRAGFiles(filePaths);
+    
+    if (result.success) {
+      showRAGProgress(100, '文档处理完成');
+      setTimeout(() => {
+        showRAGProgress(0, '准备中...');
+        // 移除处理中样式，恢复准备状态样式
+        if (progressSection) {
+          progressSection.classList.remove('processing');
+        }
+      }, 2000);
+      alert('文档已成功添加到知识库！');
+      await loadKnowledgeStats();
+      renderKnowledgeList();
+    } else {
+      showRAGProgress(0, `处理失败: ${result.error}`);
+      alert(`处理失败: ${result.error}`);
+    }
+  } catch (error) {
+    showRAGProgress(0, `处理失败: ${error.message}`);
+    alert(`处理失败: ${error.message}`);
+  } finally {
+    isProcessing = false;
+    // 确保移除处理中样式
+    const progressSection = document.getElementById('rag-progress-section');
+    if (progressSection) {
+      progressSection.classList.remove('processing');
+    }
+  }
+}
+
+function showRAGProgress(progress, message) {
+  const progressText = document.getElementById('rag-progress-text');
+  
+  if (progressText) {
+    progressText.textContent = message;
+  }
+}
+
+async function loadKnowledgeStats() {
+  try {
+    const stats = await window.electronAPI.getKnowledgeStats();
+    updateKnowledgeStats(stats);
+  } catch (error) {
+    console.error('加载知识库统计失败:', error);
+  }
+}
+
+function updateKnowledgeStats(stats) {
+  const docCount = document.getElementById('doc-count');
+  const chunkCount = document.getElementById('chunk-count');
+  const vectorCount = document.getElementById('vector-count');
+  
+  if (docCount) docCount.textContent = stats.documentCount || 0;
+  if (chunkCount) chunkCount.textContent = stats.chunkCount || 0;
+  if (vectorCount) vectorCount.textContent = stats.vectorCount || 0;
+}
+
+async function searchKnowledge() {
+  const searchInput = document.getElementById('knowledge-search-input');
+  const query = searchInput.value.trim();
+  
+  if (!query) {
+    alert('请输入搜索关键词');
+    return;
+  }
+  
+  try {
+    const results = await window.electronAPI.searchKnowledge(query);
+    displaySearchResults(results);
+  } catch (error) {
+    alert(`搜索失败: ${error.message}`);
+  }
+}
+
+function displaySearchResults(results) {
+  const resultsContainer = document.getElementById('search-results');
+  
+  if (results.length === 0) {
+    resultsContainer.innerHTML = `
+      <div class="search-result-item">
+        <div class="search-result-title">未找到相关结果</div>
+      </div>
+    `;
+    return;
+  }
+  
+  resultsContainer.innerHTML = results.map(result => `
+    <div class="search-result-item">
+      <div class="search-result-title">${escapeHtml(result.title || '文档片段')}</div>
+      <div class="search-result-content">${escapeHtml(result.content)}</div>
+      <div class="search-result-source">来源: ${escapeHtml(result.source || '未知')}</div>
+    </div>
+  `).join('');
 }
 
 function escapeHtml(text) {

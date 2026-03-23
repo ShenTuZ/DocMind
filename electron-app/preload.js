@@ -11,5 +11,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   stopVoiceRecognition: () => ipcRenderer.invoke('stop-voice-recognition'),
   onVoiceStatus: (callback) => ipcRenderer.on('voice-status', callback),
   onVoiceResult: (callback) => ipcRenderer.on('voice-result', callback),
-  onVoiceError: (callback) => ipcRenderer.on('voice-error', callback)
+  onVoiceError: (callback) => ipcRenderer.on('voice-error', callback),
+  processRAGFiles: (files) => ipcRenderer.invoke('process-rag-files', files),
+  getKnowledgeStats: () => ipcRenderer.invoke('get-knowledge-stats'),
+  searchKnowledge: (query) => ipcRenderer.invoke('search-knowledge', query),
+  getKnowledgeFiles: () => ipcRenderer.invoke('get-knowledge-files'),
+  deleteKnowledgeFile: (filePath) => ipcRenderer.invoke('delete-knowledge-file', filePath)
 });
