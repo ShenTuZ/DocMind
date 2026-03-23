@@ -17,6 +17,7 @@ async function init() {
   renderChatHistory();
   renderKnowledgeList();
   setupVoiceListeners();
+  setupKnowledgeStreamListener();
 }
 
 function setupVoiceListeners() {
@@ -200,6 +201,7 @@ async function saveKnowledgeData() {
 
 async function renderKnowledgeList() {
   const container = document.getElementById('knowledge-list');
+  const fileSelect = document.getElementById('knowledge-file-select');
   
   try {
     const result = await window.electronAPI.getKnowledgeFiles();
@@ -210,6 +212,11 @@ async function renderKnowledgeList() {
           <p>暂无知识库内容</p>
         </div>
       `;
+      
+      // 重置文件选择下拉框
+      if (fileSelect) {
+        fileSelect.innerHTML = '<option value="">所有文件</option>';
+      }
       return;
     }
 
@@ -241,6 +248,17 @@ async function renderKnowledgeList() {
           <p>还有 ${result.files.length - 10} 个文件未显示</p>
         </div>
       `;
+    }
+    
+    // 更新文件选择下拉框
+    if (fileSelect) {
+      fileSelect.innerHTML = '<option value="">所有文件</option>';
+      result.files.forEach(file => {
+        const option = document.createElement('option');
+        option.value = file.path;
+        option.textContent = file.name;
+        fileSelect.appendChild(option);
+      });
     }
   } catch (error) {
     console.error('加载知识库文件列表失败:', error);
@@ -637,48 +655,102 @@ function updateKnowledgeStats(stats) {
   if (vectorCount) vectorCount.textContent = stats.vectorCount || 0;
 }
 
-async function searchKnowledge() {
-  const searchInput = document.getElementById('knowledge-search-input');
-  const query = searchInput.value.trim();
+let currentKnowledgeMessageId = null;
+
+async function sendKnowledgeMessage() {
+  const chatInput = document.getElementById('knowledge-chat-input');
+  const fileSelect = document.getElementById('knowledge-file-select');
+  const message = chatInput.value.trim();
+  const selectedFilePath = fileSelect.value;
   
-  if (!query) {
-    alert('请输入搜索关键词');
+  if (!message) {
+    alert('请输入问题');
     return;
   }
   
   try {
-    const results = await window.electronAPI.searchKnowledge(query);
-    displaySearchResults(results);
+    // 添加用户消息到聊天界面
+    addChatMessage(message, 'user');
+    chatInput.value = '';
+    
+    // 显示正在输入状态
+    currentKnowledgeMessageId = addChatMessage('正在思考...', 'bot', true);
+    
+    // 调用知识库对话API
+    const result = await window.electronAPI.chatWithKnowledge(message, selectedFilePath);
+    
+    if (result.success) {
+      // 如果已经有流式输出，不需要额外处理
+      if (!result.content && !currentKnowledgeMessageId) {
+        addChatMessage('对话完成', 'bot');
+      }
+    } else {
+      removeChatMessage(currentKnowledgeMessageId);
+      currentKnowledgeMessageId = null;
+      addChatMessage(`对话失败: ${result.error}`, 'bot');
+    }
   } catch (error) {
-    alert(`搜索失败: ${error.message}`);
+    if (currentKnowledgeMessageId) {
+      removeChatMessage(currentKnowledgeMessageId);
+      currentKnowledgeMessageId = null;
+    }
+    addChatMessage(`对话失败: ${error.message}`, 'bot');
   }
 }
 
-function displaySearchResults(results) {
-  const resultsContainer = document.getElementById('search-results');
+function addChatMessage(content, type, isTemp = false) {
+  const chatMessages = document.getElementById('knowledge-chat-messages');
+  const messageId = isTemp ? `temp-${Date.now()}` : `msg-${Date.now()}`;
   
-  if (results.length === 0) {
-    resultsContainer.innerHTML = `
-      <div class="search-result-item">
-        <div class="search-result-title">未找到相关结果</div>
-      </div>
-    `;
-    return;
+  const messageDiv = document.createElement('div');
+  messageDiv.className = `chat-message ${type}`;
+  messageDiv.id = messageId;
+  messageDiv.innerHTML = `<div>${escapeHtml(content)}</div>`;
+  
+  chatMessages.appendChild(messageDiv);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+  
+  return messageId;
+}
+
+function removeChatMessage(messageId) {
+  const message = document.getElementById(messageId);
+  if (message) {
+    message.remove();
   }
-  
-  resultsContainer.innerHTML = results.map(result => `
-    <div class="search-result-item">
-      <div class="search-result-title">${escapeHtml(result.title || '文档片段')}</div>
-      <div class="search-result-content">${escapeHtml(result.content)}</div>
-      <div class="search-result-source">来源: ${escapeHtml(result.source || '未知')}</div>
-    </div>
-  `).join('');
+}
+
+function handleChatKeyPress(event) {
+  if (event.key === 'Enter') {
+    sendKnowledgeMessage();
+  }
 }
 
 function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
+}
+
+function setupKnowledgeStreamListener() {
+  window.electronAPI.onKnowledgeStream((event, data) => {
+    if (currentKnowledgeMessageId) {
+      const message = document.getElementById(currentKnowledgeMessageId);
+      if (message) {
+        if (message.textContent === '正在思考...') {
+          message.textContent = data.content;
+        } else {
+          message.textContent += data.content;
+        }
+        // 滚动到底部
+        const chatMessages = document.getElementById('knowledge-chat-messages');
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      }
+    } else {
+      // 如果没有当前消息ID，创建一个新消息
+      currentKnowledgeMessageId = addChatMessage(data.content, 'bot');
+    }
+  });
 }
 
 document.addEventListener('DOMContentLoaded', init);

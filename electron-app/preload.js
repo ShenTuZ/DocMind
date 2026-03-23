@@ -15,6 +15,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   processRAGFiles: (files) => ipcRenderer.invoke('process-rag-files', files),
   getKnowledgeStats: () => ipcRenderer.invoke('get-knowledge-stats'),
   searchKnowledge: (query) => ipcRenderer.invoke('search-knowledge', query),
+  chatWithKnowledge: (query, filePath) => ipcRenderer.invoke('chat-with-knowledge', query, filePath),
   getKnowledgeFiles: () => ipcRenderer.invoke('get-knowledge-files'),
-  deleteKnowledgeFile: (filePath) => ipcRenderer.invoke('delete-knowledge-file', filePath)
+  deleteKnowledgeFile: (filePath) => ipcRenderer.invoke('delete-knowledge-file', filePath),
+  onKnowledgeStream: (callback) => ipcRenderer.on('knowledge-stream', callback)
 });

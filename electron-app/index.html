@@ -41,16 +41,7 @@
             <div class="chat-container" id="chat-container">
                 <div class="chat-card">
                     <div class="chat-messages" id="chat-messages">
-                        <div class="empty-state">
-                            <p style="font-size: 24px; margin-bottom: 12px;">👋 欢迎使用 MCP AI Agent</p>
-                            <p style="margin-bottom: 8px;">我可以帮您操作文件系统，例如：</p>
-                            <p style="color: #039BE5; margin-bottom: 4px;">• "列出 Desktop 目录的内容"</p>
-                            <p style="color: #039BE5; margin-bottom: 4px;">• "读取 Desktop 下的 test.txt 文件"</p>
-                            <p style="color: #039BE5; margin-bottom: 4px;">• "在 Desktop 创建一个新文件"</p>
-                            <p style="color: #039BE5; margin-bottom: 4px;">• "搜索 Desktop 下所有的 .js 文件"</p>
-                            <p style="margin-top: 12px; font-size: 12px; color: #999;">开始输入您的消息吧！</p>
-                        </div>
-                    </div>
+                </div>
                     <div class="chat-input-area">
                         <div class="input-wrapper">
                             <input type="text" class="input-field" id="message-input" placeholder="输入您的问题，例如：列出 Desktop 目录的内容..." onkeypress="handleKeyPress(event)">
@@ -108,17 +99,22 @@
                     <div class="progress-text" id="rag-progress-text">准备中...</div>
                 </div>
                 
-                <div class="knowledge-search-section">
-                    <h3>知识库查询</h3>
-                    <div class="search-container">
-                        <input type="text" class="search-input" id="knowledge-search-input" placeholder="输入查询内容...">
-                        <button class="search-button" onclick="searchKnowledge()">搜索</button>
+                <!-- 知识库聊天界面 -->
+                <div class="knowledge-chat-container">
+                    <div class="chat-header">
+                        <h3>知识库对话</h3>
+                        <select class="chat-file-select" id="knowledge-file-select">
+                            <option value="">所有文件</option>
+                        </select>
                     </div>
-                </div>
-                
-                <div class="knowledge-results-section hidden" id="knowledge-results-section">
-                    <h3>搜索结果</h3>
-                    <div class="search-results" id="search-results">
+                    
+                    <div class="chat-messages" id="knowledge-chat-messages">
+                        <!-- 聊天消息将在这里动态显示 -->
+                    </div>
+                    
+                    <div class="chat-input-area">
+                        <input type="text" class="chat-input" id="knowledge-chat-input" placeholder="输入问题..." onkeypress="handleChatKeyPress(event)">
+                        <button class="chat-send-button" onclick="sendKnowledgeMessage()">发送</button>
                     </div>
                 </div>
                 

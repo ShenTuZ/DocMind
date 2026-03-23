@@ -713,7 +713,7 @@ ipcMain.handle('delete-knowledge-file', async (event, filePath) => {
   }
 });
 
-ipcMain.handle('search-knowledge', async (event, query) => {
+ipcMain.handle('search-knowledge', async (event, query, selectedFilePath = '') => {
   try {
     const ragScriptPath = path.join(__dirname, 'rag_processor.py');
     
@@ -722,6 +722,11 @@ ipcMain.handle('search-knowledge', async (event, query) => {
     }
     
     const args = [ragScriptPath, 'query', '--query-text', query];
+    
+    // 如果选择了特定文件，添加文件路径参数
+    if (selectedFilePath) {
+      args.push('--file-path', selectedFilePath);
+    }
     
     return new Promise((resolve, reject) => {
       const process = spawn(PYTHON_COMMAND, args, {
@@ -767,6 +772,162 @@ ipcMain.handle('search-knowledge', async (event, query) => {
   } catch (error) {
     console.error('搜索知识库失败:', error);
     return [];
+  }
+});
+
+ipcMain.handle('chat-with-knowledge', async (event, query, selectedFilePath = '') => {
+  try {
+    const config = loadConfigSync();
+    
+    // 先搜索知识库获取相关内容
+    const ragScriptPath = path.join(__dirname, 'rag_processor.py');
+    
+    if (!fs.existsSync(ragScriptPath)) {
+      return { success: false, error: 'RAG处理器文件不存在' };
+    }
+    
+    const args = [ragScriptPath, 'query', '--query-text', query];
+    
+    // 如果选择了特定文件，添加文件路径参数
+    if (selectedFilePath) {
+      args.push('--file-path', selectedFilePath);
+    }
+    
+    // 调用搜索
+    const searchResult = await new Promise((resolve, reject) => {
+      const process = spawn(PYTHON_COMMAND, args, {
+        cwd: __dirname,
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+
+      let stdout = '';
+      let stderr = '';
+
+      process.stdout.on('data', (data) => {
+        stdout += data.toString('utf8');
+      });
+
+      process.stderr.on('data', (data) => {
+        stderr += data.toString('utf8');
+      });
+
+      process.on('close', (code) => {
+        if (code === 0) {
+          try {
+            const result = JSON.parse(stdout);
+            resolve(result);
+          } catch (error) {
+            console.error('解析搜索结果失败:', error);
+            resolve({ success: false, error: '解析搜索结果失败' });
+          }
+        } else {
+          console.error('搜索失败:', stderr);
+          resolve({ success: false, error: stderr });
+        }
+      });
+      
+      process.on('error', (error) => {
+        console.error('搜索知识库失败:', error);
+        resolve({ success: false, error: error.message });
+      });
+    });
+    
+    if (!searchResult.success || searchResult.results.length === 0) {
+      return { 
+        success: true, 
+        content: '未找到相关信息，请尝试其他关键词'
+      };
+    }
+    
+    // 构建上下文信息（限制长度）
+    let context = '';
+    let totalLength = 0;
+    const maxContextLength = 2000; // 限制上下文最大长度
+    
+    for (let index = 0; index < searchResult.results.length; index++) {
+      const result = searchResult.results[index];
+      const segment = '文档片段 ' + (index + 1) + ':\n' + result.content + '\n\n';
+      if (totalLength + segment.length <= maxContextLength) {
+        context += segment;
+        totalLength += segment.length;
+      } else {
+        // 如果超过长度限制，截断内容
+        const remainingLength = maxContextLength - totalLength;
+        context += segment.substring(0, remainingLength) + '...';
+        break;
+      }
+    }
+    
+    // 构建系统提示（不使用markdown格式）
+    const systemPrompt = '你是一个智能助手，根据提供的文档内容回答用户的问题。请基于以下文档内容进行回答：\n\n' + context + '\n\n重要提示：\n1. 只基于提供的文档内容回答问题\n2. 如果文档中没有相关信息，请明确说明\n3. 保持回答简洁明了\n4. 用中文回答\n5. 不要使用任何Markdown格式，只输出纯文本内容\n6. 不要使用标题、列表、加粗、斜体等格式标记';
+    
+    // 构建消息
+    const messages = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: query }
+    ];
+    
+    // 调用模型（流式输出）
+    const response = await fetch(config.apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${config.apiKey}`
+      },
+      body: JSON.stringify({
+        model: config.model,
+        messages: messages,
+        stream: true,
+        max_tokens: 1000,
+        temperature: 0.7
+      })
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('API 响应错误:', errorText);
+      return { success: false, error: `API 请求失败: ${response.status} - ${errorText}` };
+    }
+    
+    // 处理流式响应
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder('utf-8');
+    let fullContent = '';
+    
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      
+      const chunk = decoder.decode(value);
+      const lines = chunk.split('\n');
+      
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.substring(6);
+          if (data === '[DONE]') continue;
+          
+          try {
+            const json = JSON.parse(data);
+            if (json.choices && json.choices[0].delta && json.choices[0].delta.content) {
+              const content = json.choices[0].delta.content;
+              fullContent += content;
+              // 发送流式数据到渲染进程
+              event.sender.send('knowledge-stream', { content });
+            }
+          } catch (e) {
+            console.error('解析流式数据失败:', e);
+          }
+        }
+      }
+    }
+    
+    return { 
+      success: true, 
+      content: fullContent
+    };
+  } catch (error) {
+    console.error('知识库对话失败:', error);
+    return { success: false, error: error.message };
   }
 });
 

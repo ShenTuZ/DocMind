@@ -6,10 +6,15 @@ RAG (Retrieval-Augmented Generation) 处理器
 """
 
 import os
+import sys
 import json
 import argparse
 import logging
 from typing import List, Dict, Any
+
+# 设置标准输出编码为UTF-8
+sys.stdout.reconfigure(encoding='utf-8')
+sys.stderr.reconfigure(encoding='utf-8')
 
 # 配置日志
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -373,18 +378,19 @@ class RAGProcessor:
         except Exception:
             return 0.0
     
-    def query(self, query: str, top_k: int = 3) -> Dict[str, Any]:
+    def query(self, query: str, top_k: int = 3, file_path: str = None) -> Dict[str, Any]:
         """
         查询知识库
         
         Args:
             query: 查询文本
             top_k: 返回的结果数量
+            file_path: 指定搜索的文件路径（可选）
             
         Returns:
             查询结果
         """
-        logger.info(f"查询知识库: {query}")
+        logger.info(f"查询知识库: {query}, 文件路径: {file_path}")
         
         try:
             # 检查嵌入文件是否存在
@@ -455,6 +461,13 @@ class RAGProcessor:
                     logger.info("开始计算相似度")
                     similarities = []
                     for embedding in embeddings:
+                        # 如果指定了文件路径，只搜索该文件的内容
+                        if file_path:
+                            embedding_file_path = embedding.get('file_path', '')
+                            # 使用路径规范化进行匹配
+                            if embedding_file_path and os.path.normpath(embedding_file_path) != os.path.normpath(file_path):
+                                continue
+                        
                         score = self._cosine_similarity(query_embedding, embedding.get('embedding', []))
                         logger.debug(f"相似度得分: {score}, 文件: {embedding.get('file_name', 'unknown')}")
                         if score > 0.1:  # 设置相似度阈值
@@ -659,6 +672,7 @@ def main():
     # 查询参数
     parser.add_argument('--query-text', help='查询文本')
     parser.add_argument('--top-k', type=int, default=3, help='返回的结果数量')
+    parser.add_argument('--file-path', help='指定搜索的文件路径（可选）')
     
     args = parser.parse_args()
     
@@ -685,12 +699,13 @@ def main():
             print(json.dumps(result, ensure_ascii=False))
             
         elif args.command == 'query':
-            # 查询模式
+            # 查询知识库
             if not args.query_text:
-                print(json.dumps({"success": False, "error": "请指定查询文本"}, ensure_ascii=False))
+                print(json.dumps({"success": False, "error": "请提供查询文本"}, ensure_ascii=False))
                 return
+            
             processor = RAGProcessor(args.output, args.model)
-            result = processor.query(args.query_text, args.top_k)
+            result = processor.query(args.query_text, args.top_k, args.file_path)
             print(json.dumps(result, ensure_ascii=False))
             
         elif args.command == 'get_stats':
