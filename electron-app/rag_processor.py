@@ -81,7 +81,9 @@ class RAGProcessor:
                 logger.info(f"文件解析成功，内容长度: {len(text)}")
                 
                 # 分块处理
-                chunks = self._split_text(text)
+                file_size = os.path.getsize(file_path)
+                file_type = os.path.splitext(file_path)[1]
+                chunks = self._split_text(text, file_size, file_type)
                 logger.info(f"文件分块数量: {len(chunks)}")
                 
                 if len(chunks) == 0:
@@ -546,18 +548,44 @@ class RAGProcessor:
             logger.error(f"解析文件 {file_path} 时出错: {str(e)}")
             return f"[解析错误] {os.path.basename(file_path)}"
     
-    def _split_text(self, text: str, chunk_size: int = 300, overlap: int = 50) -> List[str]:
+    def _split_text(self, text: str, file_size: int = None, file_type: str = None) -> List[str]:
         """
         将文本分割成块
         
         Args:
             text: 文本内容
-            chunk_size: 块大小
-            overlap: 块之间的重叠大小
+            file_size: 文件大小（字节），用于动态调整分块参数
+            file_type: 文件类型，用于根据不同文件类型调整分块策略
             
         Returns:
             文本块列表
         """
+        # 根据文件大小和类型动态调整分块参数
+        if file_size is None:
+            file_size = len(text)
+        
+        # 默认分块参数
+        chunk_size = 300
+        overlap = 50
+        
+        # 根据文件大小调整分块参数
+        if file_size > 1024 * 1024:  # 大于1MB的文件
+            chunk_size = 500
+            overlap = 80
+        elif file_size > 5 * 1024 * 1024:  # 大于5MB的文件
+            chunk_size = 800
+            overlap = 100
+        
+        # 根据文件类型调整分块参数
+        if file_type:
+            file_type = file_type.lower()
+            if file_type in ['.pdf', '.docx']:
+                # PDF和Word文档通常有更好的结构，可以使用更大的块
+                chunk_size = min(chunk_size + 200, 1000)
+                overlap = min(overlap + 50, 150)
+        
+        logger.info(f"使用分块参数: chunk_size={chunk_size}, overlap={overlap}, file_size={file_size}, file_type={file_type}")
+        
         chunks = []
         start = 0
         text_length = len(text)
@@ -572,6 +600,7 @@ class RAGProcessor:
             
             start += chunk_size - overlap
         
+        logger.info(f"文本分块完成，共生成 {len(chunks)} 个块")
         return chunks
     
     def _save_chunks(self, chunks: List[Dict[str, Any]]):
