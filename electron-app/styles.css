@@ -1133,10 +1133,10 @@ select.form-input {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 8px 12px;
+    padding: 4px 8px;
     background-color: rgba(102, 126, 234, 0.1);
-    border-radius: 8px;
-    margin-top: 8px;
+    border-radius: 6px;
+    margin-bottom: 8px;
     border: 1px solid rgba(102, 126, 234, 0.2);
 }
 
@@ -1146,12 +1146,8 @@ select.form-input {
     gap: 8px;
 }
 
-.attachment-icon {
-    font-size: 16px;
-}
-
 .attachment-name {
-    font-size: 13px;
+    font-size: 12px;
     color: #667eea;
     font-weight: 500;
     flex: 1;
@@ -1162,10 +1158,7 @@ select.form-input {
     border: none;
     color: #dc3545;
     cursor: pointer;
-    font-size: 16px;
-    padding: 4px;
-    border-radius: 4px;
-    transition: all 0.2s;
+    font-size: 12px;
 }
 
 .remove-attachment:hover {

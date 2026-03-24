@@ -386,7 +386,6 @@ function createMessageElement(role, content, toolCalls = [], timestamp = null, a
       attachmentHtml = `
         <div class="message-attachment">
           <div class="attachment-file">
-            <span class="attachment-file-icon">📎</span>
             <span class="attachment-file-name">${escapeHtml(attachment.name)}</span>
           </div>
         </div>
@@ -538,16 +537,14 @@ function handleFileSelect(event) {
     };
     showAttachmentPreview();
   };
-  reader.readAsDataURL(file);
+  reader.readAsText(file, 'utf-8');
 }
 
 function showAttachmentPreview() {
   const preview = document.getElementById('attachment-preview');
-  const icon = document.getElementById('attachment-icon');
   const name = document.getElementById('attachment-name');
 
   if (currentAttachment) {
-    icon.textContent = currentAttachment.type === 'image' ? '🖼️' : '📎';
     name.textContent = currentAttachment.name;
     preview.style.display = 'block';
   }

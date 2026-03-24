@@ -420,7 +420,7 @@ ${knowledgeText}
       if (attachment.type === 'image') {
         systemPrompt += `\n\n用户上传了一张图片：${attachment.name}，请分析图片内容。`;
       } else {
-        systemPrompt += `\n\n用户上传了一个文件：${attachment.name}，请查看文件内容。`;
+        systemPrompt += `\n\n用户上传了一个文件：${attachment.name}，请分析文件内容。`;
       }
     }
 
@@ -449,7 +449,10 @@ ${knowledgeText}
       } else {
         messages.push({ 
           role: 'user', 
-          content: userMessage || `请查看文件：${attachment.name}`
+          content: [
+            { type: 'text', text: userMessage || `请分析文件：${attachment.name}` },
+            { type: 'text', text: `文件内容：${attachment.data}` }
+          ]
         });
       }
     } else {
@@ -496,10 +499,96 @@ ${knowledgeText}
         };
         toolCalls.push(toolCallInfo);
 
-        const result = await mcpClient.callTool({
-          name: toolCall.function.name,
-          arguments: args
-        });
+        // 检查是否为doc、docx或pdf文件，如果是则使用自定义处理
+        if (toolCall.function.name === 'read_text_file' && args.path && 
+            (args.path.toLowerCase().endsWith('.doc') || 
+             args.path.toLowerCase().endsWith('.docx') || 
+             args.path.toLowerCase().endsWith('.pdf'))) {
+          console.log(`检测到${args.path.toLowerCase().endsWith('.pdf') ? 'pdf' : 'doc'}文件，使用自定义处理`);
+          try {
+            const pythonScript = `
+import sys
+import os
+
+# 设置标准输出编码为UTF-8
+sys.stdout.reconfigure(encoding='utf-8')
+sys.stderr.reconfigure(encoding='utf-8')
+
+file_path = sys.argv[1]
+file_ext = os.path.splitext(file_path)[1].lower()
+
+try:
+    if file_ext in ['.doc', '.docx']:
+        from docx import Document
+        doc = Document(file_path)
+        text = []
+        for paragraph in doc.paragraphs:
+            text.append(paragraph.text)
+        print('\\n'.join(text))
+    elif file_ext == '.pdf':
+        from PyPDF2 import PdfReader
+        reader = PdfReader(file_path)
+        text = []
+        for page in reader.pages:
+            text.append(page.extract_text())
+        print('\\n'.join(text))
+    else:
+        print(f"[不支持的文件格式] {file_ext}")
+except ImportError as e:
+    if 'docx' in str(e):
+        print(f"[导入错误] python-docx库未安装，无法解析Word文档")
+    elif 'PyPDF2' in str(e):
+        print(f"[导入错误] PyPDF2库未安装，无法解析PDF文档")
+    else:
+        print(f"[导入错误] {str(e)}")
+except Exception as e:
+    print(f"[解析错误] {str(e)}")
+            `;
+            
+            const tempScriptPath = path.join(__dirname, 'temp_doc_reader.py');
+            fs.writeFileSync(tempScriptPath, pythonScript);
+            
+            const { stdout: stdoutData, stderr: stderrData } = await new Promise((resolve) => {
+              const process = spawn(PYTHON_COMMAND, [tempScriptPath, args.path], {
+                cwd: __dirname,
+                stdio: ['pipe', 'pipe', 'pipe']
+              });
+              
+              let stdoutBuffer = '';
+              let stderrBuffer = '';
+              
+              process.stdout.on('data', (data) => {
+                stdoutBuffer += data.toString('utf8');
+              });
+              
+              process.stderr.on('data', (data) => {
+                stderrBuffer += data.toString('utf8');
+              });
+              
+              process.on('close', () => {
+                fs.unlinkSync(tempScriptPath);
+                resolve({ stdout: stdoutBuffer, stderr: stderrBuffer });
+              });
+            });
+            
+            let result;
+            if (stderrData) {
+              console.error('doc文件解析错误:', stderrData);
+              result = { isError: true, content: [{ type: 'text', text: `解析doc文件失败: ${stderrData}` }] };
+            } else {
+              result = { isError: false, content: [{ type: 'text', text: stdoutData }] };
+            }
+          } catch (e) {
+            console.error('处理doc文件时出错:', e);
+            result = { isError: true, content: [{ type: 'text', text: `处理doc文件失败: ${e.message}` }] };
+          }
+        } else {
+          // 使用标准MCP工具调用
+          result = await mcpClient.callTool({
+            name: toolCall.function.name,
+            arguments: args
+          });
+        }
 
         const toolMessage = {
           role: 'tool',
