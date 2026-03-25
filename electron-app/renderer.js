@@ -270,6 +270,77 @@ async function renderKnowledgeList() {
   }
 }
 
+async function renderPageIndexList() {
+  const container = document.getElementById('pageindex-list');
+  const fileSelect = document.getElementById('pageindex-file-select');
+  
+  try {
+    const result = await window.electronAPI.getPageIndexFiles();
+    
+    if (!result.success || result.files.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <p>暂无已处理文档</p>
+        </div>
+      `;
+      
+      // 重置文件选择下拉框
+      if (fileSelect) {
+        fileSelect.innerHTML = '<option value="">选择文档</option>';
+      }
+      return;
+    }
+
+    // 限制显示最多10个文件
+    const displayFiles = result.files.slice(0, 10);
+    const hasMore = result.files.length > 10;
+
+    container.innerHTML = displayFiles.map((file, index) => {
+      // 转义文件路径中的反斜杠，避免HTML解析问题
+      const escapedPath = file.path.replace(/\\/g, '\\\\');
+      return `
+        <div class="knowledge-card">
+          <div class="knowledge-card-title">${escapeHtml(file.name)}</div>
+          <div class="knowledge-card-meta">
+            <span>大小: ${formatFileSize(file.size)}</span>
+            <span>状态: ${file.status}</span>
+          </div>
+          <div class="knowledge-card-actions">
+            <button class="action-button" onclick="deletePageIndexFile('${escapedPath}')">删除</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // 如果有更多文件，显示提示
+    if (hasMore) {
+      container.innerHTML += `
+        <div class="more-files-info">
+          <p>还有 ${result.files.length - 10} 个文件未显示</p>
+        </div>
+      `;
+    }
+    
+    // 更新文件选择下拉框
+    if (fileSelect) {
+      fileSelect.innerHTML = '<option value="">选择文档</option>';
+      result.files.forEach(file => {
+        const option = document.createElement('option');
+        option.value = file.path;
+        option.textContent = file.name;
+        fileSelect.appendChild(option);
+      });
+    }
+  } catch (error) {
+    console.error('加载PageIndex文件列表失败:', error);
+    container.innerHTML = `
+      <div class="empty-state">
+        <p>加载失败</p>
+      </div>
+    `;
+  }
+}
+
 function formatFileSize(bytes) {
   if (bytes === 0) return '0 B';
   const k = 1024;
@@ -295,6 +366,23 @@ async function deleteKnowledgeFile(filePath) {
   }
 }
 
+async function deletePageIndexFile(filePath) {
+  if (!confirm('确定要删除这个文件吗？')) return;
+  
+  try {
+    const result = await window.electronAPI.deletePageIndexFile(filePath);
+    
+    if (result.success) {
+      alert('文件已成功删除');
+      renderPageIndexList();
+    } else {
+      alert(`删除失败: ${result.error}`);
+    }
+  } catch (error) {
+    alert(`删除失败: ${error.message}`);
+  }
+}
+
 function switchTab(tab) {
   currentTab = tab;
 
@@ -307,9 +395,16 @@ function switchTab(tab) {
   if (tab === 'chat') {
     document.getElementById('chat-container').classList.remove('hidden');
     document.getElementById('knowledge-container').classList.add('hidden');
+    document.getElementById('pageindex-container').classList.add('hidden');
   } else if (tab === 'knowledge') {
     document.getElementById('chat-container').classList.add('hidden');
     document.getElementById('knowledge-container').classList.remove('hidden');
+    document.getElementById('pageindex-container').classList.add('hidden');
+  } else if (tab === 'pageindex') {
+    document.getElementById('chat-container').classList.add('hidden');
+    document.getElementById('knowledge-container').classList.add('hidden');
+    document.getElementById('pageindex-container').classList.remove('hidden');
+    renderPageIndexList();
   }
 }
 
@@ -581,6 +676,30 @@ function handleRAGFolderSelect(event) {
   processRAGFiles(filePaths);
 }
 
+function selectFilesForPageIndex() {
+  document.getElementById('pageindex-file-input').click();
+}
+
+function selectFolderForPageIndex() {
+  document.getElementById('pageindex-folder-input').click();
+}
+
+function handlePageIndexFileSelect(event) {
+  const files = event.target.files;
+  if (files.length === 0) return;
+  
+  const filePaths = Array.from(files).map(file => file.path);
+  processPageIndexFiles(filePaths);
+}
+
+function handlePageIndexFolderSelect(event) {
+  const files = event.target.files;
+  if (files.length === 0) return;
+  
+  const filePaths = Array.from(files).map(file => file.path);
+  processPageIndexFiles(filePaths);
+}
+
 async function processRAGFiles(filePaths) {
   try {
     isProcessing = true;
@@ -625,8 +744,59 @@ async function processRAGFiles(filePaths) {
   }
 }
 
+async function processPageIndexFiles(filePaths) {
+  try {
+    isProcessing = true;
+    
+    // 显示进度区域并添加处理中样式
+    const progressSection = document.getElementById('pageindex-progress-section');
+    if (progressSection) {
+      progressSection.classList.remove('hidden');
+      progressSection.classList.add('processing');
+    }
+    
+    showPageIndexProgress(0, `开始处理 ${filePaths.length} 个文件...`);
+    
+    const result = await window.electronAPI.processPageIndexFiles(filePaths);
+    
+    if (result.success) {
+      showPageIndexProgress(100, '文档处理完成');
+      setTimeout(() => {
+        showPageIndexProgress(0, '准备中...');
+        // 移除处理中样式，恢复准备状态样式
+        if (progressSection) {
+          progressSection.classList.remove('processing');
+        }
+      }, 2000);
+      alert('文档已成功处理！');
+      renderPageIndexList();
+    } else {
+      showPageIndexProgress(0, `处理失败: ${result.error}`);
+      alert(`处理失败: ${result.error}`);
+    }
+  } catch (error) {
+    showPageIndexProgress(0, `处理失败: ${error.message}`);
+    alert(`处理失败: ${error.message}`);
+  } finally {
+    isProcessing = false;
+    // 确保移除处理中样式
+    const progressSection = document.getElementById('pageindex-progress-section');
+    if (progressSection) {
+      progressSection.classList.remove('processing');
+    }
+  }
+}
+
 function showRAGProgress(progress, message) {
   const progressText = document.getElementById('rag-progress-text');
+  
+  if (progressText) {
+    progressText.textContent = message;
+  }
+}
+
+function showPageIndexProgress(progress, message) {
+  const progressText = document.getElementById('pageindex-progress-text');
   
   if (progressText) {
     progressText.textContent = message;
@@ -653,6 +823,7 @@ function updateKnowledgeStats(stats) {
 }
 
 let currentKnowledgeMessageId = null;
+let currentPageIndexMessageId = null;
 
 async function sendKnowledgeMessage() {
   const chatInput = document.getElementById('knowledge-chat-input');
@@ -695,8 +866,69 @@ async function sendKnowledgeMessage() {
   }
 }
 
+async function sendPageIndexMessage() {
+  const chatInput = document.getElementById('pageindex-chat-input');
+  const fileSelect = document.getElementById('pageindex-file-select');
+  const message = chatInput.value.trim();
+  const selectedFilePath = fileSelect.value;
+  
+  if (!message) {
+    alert('请输入问题');
+    return;
+  }
+  
+  if (!selectedFilePath) {
+    alert('请先选择文档');
+    return;
+  }
+  
+  try {
+    // 添加用户消息到聊天界面
+    addPageIndexChatMessage(message, 'user');
+    chatInput.value = '';
+    
+    // 显示正在输入状态
+    currentPageIndexMessageId = addPageIndexChatMessage('正在思考...', 'bot', true);
+    
+    // 调用PageIndex对话API
+    const result = await window.electronAPI.chatWithPageIndex(message, selectedFilePath);
+    
+    if (result.success) {
+      // 移除临时消息并添加实际回答
+      removePageIndexChatMessage(currentPageIndexMessageId);
+      currentPageIndexMessageId = null;
+      addPageIndexChatMessage(result.response || '对话完成', 'bot');
+    } else {
+      removePageIndexChatMessage(currentPageIndexMessageId);
+      currentPageIndexMessageId = null;
+      addPageIndexChatMessage(`对话失败: ${result.error}`, 'bot');
+    }
+  } catch (error) {
+    if (currentPageIndexMessageId) {
+      removePageIndexChatMessage(currentPageIndexMessageId);
+      currentPageIndexMessageId = null;
+    }
+    addPageIndexChatMessage(`对话失败: ${error.message}`, 'bot');
+  }
+}
+
 function addChatMessage(content, type, isTemp = false) {
   const chatMessages = document.getElementById('knowledge-chat-messages');
+  const messageId = isTemp ? `temp-${Date.now()}` : `msg-${Date.now()}`;
+  
+  const messageDiv = document.createElement('div');
+  messageDiv.className = `chat-message ${type}`;
+  messageDiv.id = messageId;
+  messageDiv.innerHTML = `<div>${escapeHtml(content)}</div>`;
+  
+  chatMessages.appendChild(messageDiv);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+  
+  return messageId;
+}
+
+function addPageIndexChatMessage(content, type, isTemp = false) {
+  const chatMessages = document.getElementById('pageindex-chat-messages');
   const messageId = isTemp ? `temp-${Date.now()}` : `msg-${Date.now()}`;
   
   const messageDiv = document.createElement('div');
@@ -717,9 +949,22 @@ function removeChatMessage(messageId) {
   }
 }
 
-function handleChatKeyPress(event) {
+function removePageIndexChatMessage(messageId) {
+  const message = document.getElementById(messageId);
+  if (message) {
+    message.remove();
+  }
+}
+
+function handleKnowledgeChatKeyPress(event) {
   if (event.key === 'Enter') {
     sendKnowledgeMessage();
+  }
+}
+
+function handlePageIndexChatKeyPress(event) {
+  if (event.key === 'Enter') {
+    sendPageIndexMessage();
   }
 }
 

@@ -27,6 +27,13 @@
                         <div class="nav-card-desc">管理您的知识库</div>
                     </div>
                 </div>
+                <div class="nav-card" onclick="switchTab('pageindex')" id="nav-pageindex">
+                    <div class="nav-card-icon">🌲</div>
+                    <div class="nav-card-content">
+                        <div class="nav-card-title">PageIndex</div>
+                        <div class="nav-card-desc">无向量RAG文档处理</div>
+                    </div>
+                </div>
                 <div class="nav-card" onclick="openConfig()" id="nav-config">
                     <div class="nav-card-icon">⚙️</div>
                     <div class="nav-card-content">
@@ -123,6 +130,52 @@
                     </div>
                 </div>
             </div>
+
+            <div class="pageindex-container hidden" id="pageindex-container">
+                <div class="pageindex-header">
+                    <h2>PageIndex 无向量RAG</h2>
+                    <p>基于推理的树搜索文档处理系统</p>
+                </div>
+                
+                <div class="pageindex-upload-section">
+                    <h3>上传文档</h3>
+                    <div class="upload-area">
+                        <div class="upload-buttons-group">
+                            <button class="primary-button" onclick="selectFilesForPageIndex()">选择文件</button>
+                            <button class="secondary-button" onclick="selectFolderForPageIndex()">选择文件夹</button>
+                        </div>
+                        <p class="upload-info">支持格式：.pdf, .md</p>
+                    </div>
+                </div>
+                
+                <div class="pageindex-progress-section" id="pageindex-progress-section">
+                    <div class="progress-text" id="pageindex-progress-text">准备中...</div>
+                </div>
+                
+                <!-- PageIndex聊天界面 -->
+                <div class="pageindex-chat-container">
+                    <div class="chat-header">
+                        <h3>文档对话</h3>
+                        <select class="chat-file-select" id="pageindex-file-select">
+                            <option value="">选择文档</option>
+                        </select>
+                    </div>
+                    
+                    <div class="chat-messages" id="pageindex-chat-messages">
+                    </div>
+                    
+                    <div class="chat-input-area">
+                        <input type="text" class="chat-input" id="pageindex-chat-input" placeholder="输入问题..." onkeypress="handlePageIndexChatKeyPress(event)">
+                        <button class="chat-send-button" onclick="sendPageIndexMessage()">发送</button>
+                    </div>
+                </div>
+                
+                <div class="pageindex-list-section">
+                    <h3>已处理文档</h3>
+                    <div class="knowledge-grid" id="pageindex-list">
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -150,6 +203,8 @@
     <input type="file" id="file-input" style="display: none;" onchange="handleFileSelect(event)">
     <input type="file" id="rag-file-input" multiple style="display: none;" onchange="handleRAGFileSelect(event)">
     <input type="file" id="rag-folder-input" webkitdirectory directory style="display: none;" onchange="handleRAGFolderSelect(event)">
+    <input type="file" id="pageindex-file-input" multiple style="display: none;" onchange="handlePageIndexFileSelect(event)">
+    <input type="file" id="pageindex-folder-input" webkitdirectory directory style="display: none;" onchange="handlePageIndexFolderSelect(event)">
 
     <script src="renderer.js"></script>
 </body>

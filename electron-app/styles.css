@@ -44,9 +44,14 @@ body {
 }
 
 .sidebar-nav {
-    display: grid;
-    grid-template-columns: 1fr;
+    display: flex;
+    flex-direction: column;
     gap: 12px;
+    flex: 1;
+}
+
+#nav-config {
+    margin-top: auto;
 }
 
 .nav-card {
@@ -123,6 +128,12 @@ body {
     height: 100%;
 }
 
+.pageindex-container {
+    padding: 24px;
+    overflow-y: auto;
+    height: 100%;
+}
+
 .knowledge-header {
     text-align: center;
     margin-bottom: 32px;
@@ -136,6 +147,23 @@ body {
 }
 
 .knowledge-header p {
+    font-size: 16px;
+    color: #666;
+}
+
+.pageindex-header {
+    text-align: center;
+    margin-bottom: 32px;
+}
+
+.pageindex-header h2 {
+    font-size: 28px;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin-bottom: 8px;
+}
+
+.pageindex-header p {
     font-size: 16px;
     color: #666;
 }
@@ -557,6 +585,63 @@ body {
 }
 
 .knowledge-list-section h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin-bottom: 16px;
+}
+
+.pageindex-upload-section {
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    backdrop-filter: blur(10px);
+}
+
+.pageindex-upload-section h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin-bottom: 16px;
+}
+
+.pageindex-progress-section {
+    background: linear-gradient(135deg, rgba(3, 155, 229, 0.1) 0%, rgba(2, 136, 209, 0.05) 100%);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 24px;
+    box-shadow: 0 2px 12px rgba(3, 155, 229, 0.1);
+    border: 1px solid rgba(3, 155, 229, 0.2);
+    transition: all 0.3s ease;
+}
+
+.pageindex-progress-section.processing {
+    background: linear-gradient(135deg, rgba(3, 155, 229, 0.2) 0%, rgba(2, 136, 209, 0.1) 100%);
+    box-shadow: 0 4px 20px rgba(3, 155, 229, 0.2);
+    border-color: rgba(3, 155, 229, 0.4);
+}
+
+.pageindex-chat-container {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 24px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(220, 220, 220, 0.5);
+}
+
+.pageindex-list-section {
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    backdrop-filter: blur(10px);
+}
+
+.pageindex-list-section h3 {
     font-size: 18px;
     font-weight: 600;
     color: #1a1a1a;

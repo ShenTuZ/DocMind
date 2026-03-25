@@ -1020,6 +1020,182 @@ ipcMain.handle('chat-with-knowledge', async (event, query, selectedFilePath = ''
   }
 });
 
+// PageIndex 无向量RAG相关处理
+
+ipcMain.handle('process-pageindex-files', async (event, filePaths) => {
+  try {
+    const runPageIndexPath = path.join(__dirname, 'run_pageindex.py');
+    
+    if (!fs.existsSync(runPageIndexPath)) {
+      throw new Error('PageIndex处理器文件不存在');
+    }
+    
+    // 处理每个文件
+    const results = [];
+    
+    for (const filePath of filePaths) {
+      const fileExt = path.extname(filePath).toLowerCase();
+      let args;
+      
+      if (fileExt === '.pdf') {
+        args = [runPageIndexPath, '--pdf_path', filePath];
+      } else if (fileExt === '.md' || fileExt === '.markdown') {
+        args = [runPageIndexPath, '--md_path', filePath];
+      } else {
+        results.push({
+          file: filePath,
+          success: false,
+          error: '不支持的文件格式，仅支持 .pdf 和 .md 文件'
+        });
+        continue;
+      }
+      
+      const result = await new Promise((resolve) => {
+        const process = spawn(PYTHON_COMMAND, args, {
+          cwd: __dirname,
+          stdio: ['pipe', 'pipe', 'pipe']
+        });
+        
+        let stdout = '';
+        let stderr = '';
+        
+        process.stdout.on('data', (data) => {
+          stdout += data.toString('utf8');
+        });
+        
+        process.stderr.on('data', (data) => {
+          stderr += data.toString('utf8');
+        });
+        
+        process.on('close', (code) => {
+          if (code === 0) {
+            resolve({
+              file: filePath,
+              success: true,
+              output: stdout
+            });
+          } else {
+            console.error(`PageIndex处理失败 (${filePath}):`, stderr);
+            resolve({
+              file: filePath,
+              success: false,
+              error: stderr || '处理失败'
+            });
+          }
+        });
+        
+        process.on('error', (error) => {
+          console.error(`启动PageIndex处理器失败 (${filePath}):`, error);
+          resolve({
+            file: filePath,
+            success: false,
+            error: error.message
+          });
+        });
+      });
+      
+      results.push(result);
+    }
+    
+    return { success: true, results };
+  } catch (error) {
+    console.error('处理PageIndex文件失败:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('get-pageindex-files', async () => {
+  try {
+    const resultsDir = path.join(__dirname, 'results');
+    
+    if (!fs.existsSync(resultsDir)) {
+      return { success: true, files: [] };
+    }
+    
+    const files = [];
+    const filesInDir = fs.readdirSync(resultsDir);
+    
+    filesInDir.forEach(file => {
+      if (file.endsWith('_structure.json')) {
+        const filePath = path.join(resultsDir, file);
+        const stats = fs.statSync(filePath);
+        files.push({
+          name: file.replace('_structure.json', ''),
+          path: filePath,
+          size: stats.size,
+          status: '已处理'
+        });
+      }
+    });
+    
+    return { success: true, files };
+  } catch (error) {
+    console.error('获取PageIndex文件列表失败:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('delete-pageindex-file', async (event, filePath) => {
+  try {
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+      return { success: true };
+    } else {
+      return { success: false, error: '文件不存在' };
+    }
+  } catch (error) {
+    console.error('删除PageIndex文件失败:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('chat-with-pageindex', async (event, query, filePath) => {
+  try {
+    const vectorlessRagPath = path.join(__dirname, 'vectorless_rag.py');
+    
+    if (!fs.existsSync(vectorlessRagPath)) {
+      return { success: false, error: 'Vectorless RAG文件不存在' };
+    }
+    
+    const args = [vectorlessRagPath, 'query', filePath, '--query', query];
+    
+    return new Promise((resolve, reject) => {
+      const process = spawn(PYTHON_COMMAND, args, {
+        cwd: __dirname,
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+      
+      let stdout = '';
+      let stderr = '';
+      
+      process.stdout.on('data', (data) => {
+        stdout += data.toString('utf8');
+      });
+      
+      process.stderr.on('data', (data) => {
+        stderr += data.toString('utf8');
+      });
+      
+      process.on('close', (code) => {
+        if (code === 0) {
+          resolve({ success: true, response: stdout.trim() });
+        } else {
+          console.error('PageIndex对话失败:', stderr);
+          resolve({ success: false, error: stderr || '对话失败' });
+        }
+      });
+      
+      process.on('error', (error) => {
+        console.error('启动Vectorless RAG失败:', error);
+        resolve({ success: false, error: error.message });
+      });
+    });
+  } catch (error) {
+    console.error('PageIndex对话失败:', error);
+    return { success: false, error: error.message };
+  }
+});
+
 app.whenReady().then(() => {
   createWindow();
   

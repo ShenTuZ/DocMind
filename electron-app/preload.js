@@ -18,5 +18,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   chatWithKnowledge: (query, filePath) => ipcRenderer.invoke('chat-with-knowledge', query, filePath),
   getKnowledgeFiles: () => ipcRenderer.invoke('get-knowledge-files'),
   deleteKnowledgeFile: (filePath) => ipcRenderer.invoke('delete-knowledge-file', filePath),
-  onKnowledgeStream: (callback) => ipcRenderer.on('knowledge-stream', callback)
+  onKnowledgeStream: (callback) => ipcRenderer.on('knowledge-stream', callback),
+  processPageIndexFiles: (files) => ipcRenderer.invoke('process-pageindex-files', files),
+  getPageIndexFiles: () => ipcRenderer.invoke('get-pageindex-files'),
+  deletePageIndexFile: (filePath) => ipcRenderer.invoke('delete-pageindex-file', filePath),
+  chatWithPageIndex: (query, filePath) => ipcRenderer.invoke('chat-with-pageindex', query, filePath)
 });
