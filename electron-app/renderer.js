@@ -99,9 +99,24 @@ async function loadConfig() {
   try {
     const config = await window.electronAPI.loadConfig();
     if (config) {
-      document.getElementById('model-name').value = config.model || DEFAULT_MODEL;
+      const modelType = config.modelType || 'api';
+      document.getElementById('model-type').value = modelType;
       document.getElementById('desktop-path').value = config.desktopPath || '';
       document.getElementById('downloads-path').value = config.downloadsPath || '';
+      
+      // 根据模型类型显示相应的输入框
+      const apiModelSection = document.getElementById('api-model-section');
+      const ollamaModelSection = document.getElementById('ollama-model-section');
+      
+      if (modelType === 'api') {
+        apiModelSection.style.display = 'block';
+        ollamaModelSection.style.display = 'none';
+        document.getElementById('model-name').value = config.model || DEFAULT_MODEL;
+      } else {
+        apiModelSection.style.display = 'none';
+        ollamaModelSection.style.display = 'block';
+        document.getElementById('ollama-model-name').value = config.model || 'qwen3.5:4b';
+      }
     }
   } catch (error) {
     console.error('加载配置失败:', error);
@@ -121,8 +136,18 @@ async function clearHistory() {
 
 async function saveConfig() {
   try {
+    const modelType = document.getElementById('model-type').value;
+    let modelName;
+    
+    if (modelType === 'api') {
+      modelName = document.getElementById('model-name').value || DEFAULT_MODEL;
+    } else {
+      modelName = document.getElementById('ollama-model-name').value || 'qwen3.5:4b';
+    }
+    
     const config = {
-      model: document.getElementById('model-name').value || DEFAULT_MODEL,
+      modelType: modelType,
+      model: modelName,
       desktopPath: document.getElementById('desktop-path').value || DEFAULT_DESKTOP_PATH,
       downloadsPath: document.getElementById('downloads-path').value || DEFAULT_DOWNLOADS_PATH
     };
@@ -410,6 +435,21 @@ function switchTab(tab) {
 
 function openConfig() {
   document.getElementById('config-modal').classList.remove('hidden');
+  
+  // 添加模型类型切换事件监听
+  const modelTypeSelect = document.getElementById('model-type');
+  const apiModelSection = document.getElementById('api-model-section');
+  const ollamaModelSection = document.getElementById('ollama-model-section');
+  
+  modelTypeSelect.addEventListener('change', function() {
+    if (modelTypeSelect.value === 'api') {
+      apiModelSection.style.display = 'block';
+      ollamaModelSection.style.display = 'none';
+    } else {
+      apiModelSection.style.display = 'none';
+      ollamaModelSection.style.display = 'block';
+    }
+  });
 }
 
 function closeConfig() {

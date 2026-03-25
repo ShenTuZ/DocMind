@@ -101,10 +101,20 @@ function loadConfigSync() {
         }
       });
       
+      const modelType = envVars.MODEL_TYPE || 'api';
+      let modelName;
+      
+      if (modelType === 'api') {
+        modelName = envVars.API_MODEL_NAME || DEFAULT_CONFIG.model;
+      } else {
+        modelName = envVars.OLLAMA_MODEL_NAME || 'qwen3.5:4b';
+      }
+      
       cachedConfig = {
         ...DEFAULT_CONFIG,
+        modelType: modelType,
         apiKey: envVars.API_KEY || process.env.API_KEY,
-        model: envVars.API_MODEL_NAME || DEFAULT_CONFIG.model,
+        model: modelName,
         desktopPath: envVars.DESKTOP_PATH || DEFAULT_CONFIG.desktopPath,
         downloadsPath: envVars.DOWNLOADS_PATH || DEFAULT_CONFIG.downloadsPath
       };
@@ -116,7 +126,9 @@ function loadConfigSync() {
   
   cachedConfig = {
     ...DEFAULT_CONFIG,
-    apiKey: process.env.API_KEY
+    modelType: 'api',
+    apiKey: process.env.API_KEY,
+    model: DEFAULT_CONFIG.model
   };
   return cachedConfig;
 }
@@ -246,9 +258,31 @@ ipcMain.handle('save-config', async (event, config) => {
     const envPath = path.join(__dirname, '.env');
     let envContent = '';
     
-    if (config.model) {
-      envContent += `API_MODEL_NAME=${config.model}\n`;
+    // 保留现有环境变量
+    if (fs.existsSync(envPath)) {
+      const existingEnv = fs.readFileSync(envPath, 'utf8');
+      const envLines = existingEnv.split('\n');
+      
+      // 保留API_KEY、CHATGPT_API_KEY、OPENAI_BASE_URL等重要配置
+      const linesToKeep = ['API_KEY', 'CHATGPT_API_KEY', 'OPENAI_BASE_URL', 'MODEL_TYPE', 'MODEL', 'OLLAMA_MODEL_NAME'];
+      
+      envLines.forEach(line => {
+        const [key] = line.split('=');
+        if (linesToKeep.includes(key)) {
+          envContent += line + '\n';
+        }
+      });
     }
+    
+    // 添加新的配置
+    envContent += `MODEL_TYPE=${config.modelType || 'api'}\n`;
+    
+    if (config.modelType === 'api') {
+      envContent += `API_MODEL_NAME=${config.model}\n`;
+    } else {
+      envContent += `OLLAMA_MODEL_NAME=${config.model}\n`;
+    }
+    
     if (config.desktopPath) {
       envContent += `DESKTOP_PATH=${config.desktopPath}\n`;
     }

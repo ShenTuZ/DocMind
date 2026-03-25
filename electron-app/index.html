@@ -184,8 +184,19 @@
             <button class="close-button" onclick="closeConfig()">×</button>
             <h2>系统设置</h2>
             <div class="form-group">
+                <label>模型类型</label>
+                <select class="form-input" id="model-type">
+                    <option value="api">API 模型</option>
+                    <option value="ollama">本地 Ollama 模型</option>
+                </select>
+            </div>
+            <div class="form-group" id="api-model-section">
                 <label>API 模型名称</label>
                 <input type="text" class="form-input" id="model-name" value="Qwen/Qwen3-VL-32B-Instruct">
+            </div>
+            <div class="form-group" id="ollama-model-section" style="display: none;">
+                <label>Ollama 模型名称</label>
+                <input type="text" class="form-input" id="ollama-model-name" value="qwen3.5:4b">
             </div>
             <div class="form-group">
                 <label>Desktop 路径</label>
