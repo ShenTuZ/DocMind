@@ -28,21 +28,24 @@ const PYTHON_COMMAND = process.platform === 'win32' ? 'D:\\anaconda3\\python.exe
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1400,
-    height: 900,
-    minWidth: 1000,
-    minHeight: 700,
+    width: 800,
+    height: 600,
+    minWidth: 600,
+    minHeight: 500,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: true,
+      enableRemoteModule: true
     },
     frame: true,
     backgroundColor: '#f5f7fa',
-    show: false
+    show: false,
+    resizable: false
   });
 
-  mainWindow.loadFile('index.html');
+  // 先加载登录界面
+  mainWindow.loadFile('login.html');
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
@@ -1232,6 +1235,19 @@ ipcMain.handle('chat-with-pageindex', async (event, query, filePath) => {
 
 app.whenReady().then(() => {
   createWindow();
+  
+  // 监听登录成功事件
+  ipcMain.on('login-success', (event, data) => {
+    console.log('登录成功:', data.username);
+    
+    // 调整窗口大小为应用主界面大小
+    mainWindow.setSize(1400, 900);
+    mainWindow.setMinimumSize(1000, 700);
+    mainWindow.setResizable(true);
+    
+    // 加载主应用界面
+    mainWindow.loadFile('index.html');
+  });
   
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

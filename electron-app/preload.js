@@ -22,5 +22,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   processPageIndexFiles: (files) => ipcRenderer.invoke('process-pageindex-files', files),
   getPageIndexFiles: () => ipcRenderer.invoke('get-pageindex-files'),
   deletePageIndexFile: (filePath) => ipcRenderer.invoke('delete-pageindex-file', filePath),
-  chatWithPageIndex: (query, filePath) => ipcRenderer.invoke('chat-with-pageindex', query, filePath)
+  chatWithPageIndex: (query, filePath) => ipcRenderer.invoke('chat-with-pageindex', query, filePath),
+  loginSuccess: (data) => ipcRenderer.send('login-success', data)
 });
