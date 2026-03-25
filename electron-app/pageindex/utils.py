@@ -11,7 +11,6 @@ import asyncio
 import pymupdf
 from io import BytesIO
 from dotenv import load_dotenv
-load_dotenv()
 import logging
 import yaml
 from pathlib import Path
@@ -20,15 +19,25 @@ import requests
 import aiohttp
 from tqdm import tqdm
 
-CHATGPT_API_KEY = os.getenv("CHATGPT_API_KEY")
+# 从 config.json 读取配置
+def load_config():
+    config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config.json')
+    if os.path.exists(config_path):
+        with open(config_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    return {}
+
+config_data = load_config()
+
+CHATGPT_API_KEY = config_data.get('apiKey', '')
 # 设置 OPENAI_API_KEY 环境变量，供 openai 库使用
 if CHATGPT_API_KEY:
     os.environ["OPENAI_API_KEY"] = CHATGPT_API_KEY
 
-USE_OLLAMA = os.getenv("USE_OLLAMA", "false").lower() == "true"
-OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen3:8b")
-OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
+USE_OLLAMA = config_data.get('modelType') == 'ollama'
+OLLAMA_BASE_URL = "http://localhost:11434"
+OLLAMA_MODEL = config_data.get('ollamaModel', 'qwen3.5:4b')
+OPENAI_BASE_URL = config_data.get('apiUrl', 'https://api.siliconflow.cn/v1/chat/completions')
 
 def count_tokens(text, model=None):
     if not text:
@@ -80,8 +89,8 @@ def ChatGPT_API_with_finish_reason(model, prompt, api_key=CHATGPT_API_KEY, chat_
                 else:
                     messages = [{"role": "user", "content": prompt}]
                 
-                # 使用环境变量中的模型，如果没有则使用传入的模型
-                model_name = os.getenv("MODEL", model)
+                # 使用配置中的模型，如果没有则使用传入的模型
+                model_name = config_data.get('model', model)
                 
                 response = client.chat.completions.create(
                     model=model_name,
@@ -143,8 +152,8 @@ def ChatGPT_API(model, prompt, api_key=CHATGPT_API_KEY, chat_history=None):
                 else:
                     messages = [{"role": "user", "content": prompt}]
                 
-                # 使用环境变量中的模型，如果没有则使用传入的模型
-                model_name = os.getenv("MODEL", model)
+                # 使用配置中的模型，如果没有则使用传入的模型
+                model_name = config_data.get('model', model)
                 
                 response = client.chat.completions.create(
                     model=model_name,

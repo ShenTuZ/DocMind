@@ -19,7 +19,9 @@ const knowledgePath = path.join(__dirname, 'knowledge.json');
 const DEFAULT_CONFIG = {
   modelType: 'api',
   apiUrl: 'https://api.siliconflow.cn/v1/chat/completions',
+  apiKey: '',
   model: 'Qwen/Qwen3-VL-32B-Instruct',
+  ollamaModel: 'qwen3.5:4b',
   desktopPath: 'C:\\Users\\Administrator\\Desktop',
   downloadsPath: 'C:\\Users\\Administrator\\Downloads'
 };
@@ -92,34 +94,13 @@ function loadConfigSync() {
   }
 
   try {
-    const envPath = path.join(__dirname, '.env');
-    if (fs.existsSync(envPath)) {
-      const data = fs.readFileSync(envPath, 'utf8');
-      const envVars = {};
-      
-      data.split('\n').forEach(line => {
-        const [key, ...valueParts] = line.split('=');
-        if (key && valueParts.length > 0) {
-          envVars[key.trim()] = valueParts.join('=').trim();
-        }
-      });
-      
-      const modelType = envVars.MODEL_TYPE || 'api';
-      let modelName;
-      
-      if (modelType === 'api') {
-        modelName = envVars.API_MODEL_NAME || DEFAULT_CONFIG.model;
-      } else {
-        modelName = envVars.OLLAMA_MODEL_NAME || 'qwen3.5:4b';
-      }
+    if (fs.existsSync(configPath)) {
+      const data = fs.readFileSync(configPath, 'utf8');
+      const configData = JSON.parse(data);
       
       cachedConfig = {
         ...DEFAULT_CONFIG,
-        modelType: modelType,
-        apiKey: envVars.API_KEY || process.env.API_KEY,
-        model: modelName,
-        desktopPath: envVars.DESKTOP_PATH || DEFAULT_CONFIG.desktopPath,
-        downloadsPath: envVars.DOWNLOADS_PATH || DEFAULT_CONFIG.downloadsPath
+        ...configData
       };
       return cachedConfig;
     }
@@ -128,10 +109,7 @@ function loadConfigSync() {
   }
   
   cachedConfig = {
-    ...DEFAULT_CONFIG,
-    modelType: 'api',
-    apiKey: process.env.API_KEY,
-    model: DEFAULT_CONFIG.model
+    ...DEFAULT_CONFIG
   };
   return cachedConfig;
 }
@@ -258,42 +236,22 @@ ipcMain.handle('load-config', async () => {
 
 ipcMain.handle('save-config', async (event, config) => {
   try {
-    const envPath = path.join(__dirname, '.env');
-    let envContent = '';
-    
-    // 保留现有环境变量
-    if (fs.existsSync(envPath)) {
-      const existingEnv = fs.readFileSync(envPath, 'utf8');
-      const envLines = existingEnv.split('\n');
-      
-      // 保留API_KEY、CHATGPT_API_KEY、OPENAI_BASE_URL等重要配置
-      const linesToKeep = ['API_KEY', 'CHATGPT_API_KEY', 'OPENAI_BASE_URL', 'MODEL_TYPE', 'MODEL', 'OLLAMA_MODEL_NAME'];
-      
-      envLines.forEach(line => {
-        const [key] = line.split('=');
-        if (linesToKeep.includes(key)) {
-          envContent += line + '\n';
-        }
-      });
+    // 读取现有配置
+    let existingConfig = {};
+    if (fs.existsSync(configPath)) {
+      const existingData = fs.readFileSync(configPath, 'utf8');
+      existingConfig = JSON.parse(existingData);
     }
     
-    // 添加新的配置
-    envContent += `MODEL_TYPE=${config.modelType || 'api'}\n`;
+    // 合并新配置
+    const updatedConfig = {
+      ...DEFAULT_CONFIG,
+      ...existingConfig,
+      ...config
+    };
     
-    if (config.modelType === 'api') {
-      envContent += `API_MODEL_NAME=${config.model}\n`;
-    } else {
-      envContent += `OLLAMA_MODEL_NAME=${config.model}\n`;
-    }
-    
-    if (config.desktopPath) {
-      envContent += `DESKTOP_PATH=${config.desktopPath}\n`;
-    }
-    if (config.downloadsPath) {
-      envContent += `DOWNLOADS_PATH=${config.downloadsPath}\n`;
-    }
-    
-    fs.writeFileSync(envPath, envContent, 'utf8');
+    // 写入配置文件
+    fs.writeFileSync(configPath, JSON.stringify(updatedConfig, null, 2), 'utf8');
     cachedConfig = null;
     return { success: true };
   } catch (error) {

@@ -47,8 +47,12 @@
         <div class="main-content">
             <div class="chat-container" id="chat-container">
                 <div class="chat-card">
+                    <div class="chat-hint">
+                        <span class="hint-icon">💡</span>
+                        <span class="hint-text">处理桌面文件时，请尽量精确描述文件类型（例如：新闻.docx）</span>
+                    </div>
                     <div class="chat-messages" id="chat-messages">
-                </div>
+                    </div>
                     <div class="chat-input-area">
                         <div class="attachment-preview" id="attachment-preview" style="display: none;">
                             <div class="attachment-item" id="attachment-item">
@@ -57,7 +61,7 @@
                             </div>
                         </div>
                         <div class="input-wrapper">
-                            <input type="text" class="input-field" id="message-input" placeholder="输入您的问题，例如：列出 Desktop 目录的内容..." onkeypress="handleKeyPress(event)">
+                            <input type="text" class="input-field" id="message-input" placeholder="输入您的问题，例如：查看 新闻.docx 文件的内容..." onkeypress="handleKeyPress(event)">
                             <div class="upload-buttons">
                                 <button class="upload-button" onclick="selectImage()" id="image-button" title="上传图片">
                                     <span class="upload-text">图片</span>
