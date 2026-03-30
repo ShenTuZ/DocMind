@@ -13,7 +13,7 @@ from vosk import KaldiRecognizer, Model
 try:
     # 加载模型
     print('STARTED', flush=True)
-    model = Model(r"C:\Users\Administrator\Desktop\MCP\mcp\vosk-model-small-cn-0.22\vosk-model-small-cn-0.22")
+    model = Model(r"C:\Users\Administrator\Desktop\MCP\mcp\vosk-model-cn-0.22")
     
     # 创建麦克风对象
     micro = pyaudio.PyAudio()

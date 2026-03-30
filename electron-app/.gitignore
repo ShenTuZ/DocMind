@@ -6,4 +6,5 @@ knowledge.json
 .DS_Store
 Thumbs.db
 rag_data/
-vosk-model-small-cn-0.22/
+vosk-model-cn-0.22/
+test_voice_simple.py
