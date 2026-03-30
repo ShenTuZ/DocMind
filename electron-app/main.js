@@ -73,7 +73,11 @@ async function connectMCP() {
       name: 'mcp-agent-electron',
       version: '1.0.0'
     }, {
-      capabilities: {}
+      capabilities: {
+        roots: {
+          listChanged: true
+        }
+      }
     });
 
     await mcpClient.connect(mcpTransport);
@@ -375,11 +379,11 @@ ipcMain.handle('send-message', async (event, userMessage, attachment = null) => 
       ? `\n\n知识库信息：\n${knowledge.map(k => `- ${k.title}: ${k.content}`).join('\n')}` 
       : '';
 
-    let systemPrompt = `你是一个智能助手，可以帮助用户操作文件系统。你有以下工具可以使用：
+    let systemPrompt = `你是一个智能桌面文件助手，可以帮助用户操作桌面文件系统。你有以下工具可以使用：
 
 ${tools.map(tool => `- ${tool.name}: ${tool.description}`).join('\n')}
 
-当用户需要操作文件时，必须使用工具调用。工具调用格式如下：
+当用户需要桌面操作文件时，必须使用工具调用。工具调用格式如下：
 {
   "tool_calls": [
     {
@@ -394,7 +398,7 @@ ${tools.map(tool => `- ${tool.name}: ${tool.description}`).join('\n')}
 }
 
 重要提示：
-- 当用户询问文件操作时，必须返回 tool_calls 字段
+- 当用户询问桌面文件操作时，必须返回 tool_calls 字段
 - tool_calls 必须是一个数组
 - arguments 必须是 JSON 对象，不是字符串
 - 如果不需要使用工具，直接在 content 字段中回答
@@ -403,10 +407,19 @@ ${tools.map(tool => `- ${tool.name}: ${tool.description}`).join('\n')}
 1. 只能访问 ${config.desktopPath} 和 ${config.downloadsPath} 目录
 2. 文件路径必须是完整路径
 3. 使用 list_directory 列出目录内容
-4. 使用 read_text_file 读取文件内容
-5. 使用 write_file 写入文件
-6. 使用 search_files 搜索文件
-7. 使用 get_file_info 获取文件信息
+4. 使用 list_directory_with_sizes 列出目录内容（带大小）
+5. 使用 directory_tree 生成目录树结构
+6. 使用 read_text_file 读取文本文件内容
+7. 使用 read_file 读取文件内容
+8. 使用 read_media_file 读取图像/音频文件
+9. 使用 read_multiple_files 批量读取多个文件
+10. 使用 write_file 写入文件
+11. 使用 edit_file 高级编辑文件（支持精准替换）
+12. 使用 create_directory 创建目录
+13. 使用 move_file 移动/重命名文件
+14. 使用 search_files 搜索文件
+15. 使用 get_file_info 获取文件信息
+16. 使用 list_allowed_directories 查看授权目录
 ${knowledgeText}
 
 请用中文回答用户的问题。`;
