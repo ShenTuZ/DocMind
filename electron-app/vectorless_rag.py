@@ -1,6 +1,6 @@
 import os
 import json
-from pageindex.utils import ChatGPT_API
+from pageindex.utils import LLM_API
 
 # 从 config.json 读取配置
 def load_config():
@@ -56,7 +56,7 @@ class VectorlessRAG:
 请返回最相关的章节标题列表，按相关性从高到低排序。只返回标题，不返回其他内容。"""
         
         # 调用模型进行推理
-        response = ChatGPT_API(model=self.model, prompt=prompt)
+        response = LLM_API(model=self.model, prompt=prompt)
         
         # 解析响应，提取相关章节
         relevant_titles = [line.strip() for line in response.split('\n') if line.strip()]
@@ -105,7 +105,7 @@ class VectorlessRAG:
 请基于文档内容提供详细、准确的回答。如果文档中没有相关信息，请明确说明。"""
         
         # 调用模型生成回答
-        response = ChatGPT_API(model=self.model, prompt=prompt)
+        response = LLM_API(model=self.model, prompt=prompt)
         return response
     
     def chat(self):

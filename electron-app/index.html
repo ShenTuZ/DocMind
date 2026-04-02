@@ -70,7 +70,7 @@
                                     <span class="upload-text">文件</span>
                                 </button>
                             </div>
-                            <button class="voice-button" onclick="toggleVoiceRecording()" id="voice-button" title="语音输入">
+                            <button class="voice-button" onclick="toggleVoiceRecording()" id="voice-button" title="语音">
                                 <span class="voice-text">语音</span>
                             </button>
                             <button class="send-button" onclick="sendMessage()" id="send-button">
@@ -80,10 +80,7 @@
                                 ✕
                             </button>
                         </div>
-                        <div class="voice-status" id="voice-status" style="display: none;">
-                            <div class="voice-indicator"></div>
-                            <span class="voice-status-text">正在录音...</span>
-                        </div>
+
                     </div>
                 </div>
             </div>
@@ -196,7 +193,7 @@
             </div>
             <div class="form-group" id="api-model-section">
                 <label>API 模型名称</label>
-                <input type="text" class="form-input" id="model-name" value="Qwen/Qwen3-VL-32B-Instruct">
+                <input type="text" class="form-input" id="model-name" value="Qwen/Qwen3-VL-235B-A22B-Instruct">
             </div>
             <div class="form-group" id="ollama-model-section" style="display: none;">
                 <label>Ollama 模型名称</label>

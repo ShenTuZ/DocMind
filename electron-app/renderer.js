@@ -57,22 +57,15 @@ function setupVoiceListeners() {
 
 function updateVoiceButtonState(isRecording) {
   const voiceButton = document.getElementById('voice-button');
-  const voiceStatus = document.getElementById('voice-status');
   const voiceText = voiceButton.querySelector('.voice-text');
   
   if (voiceButton) {
     if (isRecording) {
       voiceButton.classList.add('recording');
-      voiceText.textContent = '结束输入';
-      if (voiceStatus) {
-        voiceStatus.style.display = 'flex';
-      }
+      voiceText.textContent = '结束';
     } else {
       voiceButton.classList.remove('recording');
-      voiceText.textContent = '开始输入';
-      if (voiceStatus) {
-        voiceStatus.style.display = 'none';
-      }
+      voiceText.textContent = '语音';
     }
   }
 }

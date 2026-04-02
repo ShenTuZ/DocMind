@@ -50,7 +50,7 @@ def count_tokens(text, model=None):
     tokens = enc.encode(text)
     return len(tokens)
 
-def ChatGPT_API_with_finish_reason(model, prompt, api_key=CHATGPT_API_KEY, chat_history=None):
+def LLM_API_with_finish_reason(model, prompt, api_key=CHATGPT_API_KEY, chat_history=None):
     max_retries = 3
     timeout = 60  # 设置60秒超时
     for i in range(max_retries):
@@ -113,7 +113,7 @@ def ChatGPT_API_with_finish_reason(model, prompt, api_key=CHATGPT_API_KEY, chat_
 
 
 
-def ChatGPT_API(model, prompt, api_key=CHATGPT_API_KEY, chat_history=None):
+def LLM_API(model, prompt, api_key=CHATGPT_API_KEY, chat_history=None):
     max_retries = 3
     timeout = 60  # 设置60秒超时
     for i in range(max_retries):
@@ -174,7 +174,7 @@ def ChatGPT_API(model, prompt, api_key=CHATGPT_API_KEY, chat_history=None):
 
 import aiohttp
 
-async def ChatGPT_API_async(model, prompt, api_key=CHATGPT_API_KEY):
+async def LLM_API_async(model, prompt, api_key=CHATGPT_API_KEY):
     max_retries = 3
     timeout = 60  # 设置60秒超时
     messages = [{"role": "user", "content": prompt}]
@@ -757,7 +757,7 @@ async def generate_node_summary(node, model=None):
     
     Directly return the description, do not include any other text.
     """
-    response = await ChatGPT_API_async(model, prompt)
+    response = await LLM_API_async(model, prompt)
     return response
 
 
@@ -802,7 +802,7 @@ def generate_doc_description(structure, model=None):
     
     Directly return the description, do not include any other text.
     """
-    response = ChatGPT_API(model, prompt)
+    response = LLM_API(model, prompt)
     return response
 
 
