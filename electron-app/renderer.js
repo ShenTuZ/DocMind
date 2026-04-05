@@ -97,6 +97,12 @@ async function loadConfig() {
       document.getElementById('desktop-path').value = config.desktopPath || '';
       document.getElementById('downloads-path').value = config.downloadsPath || '';
       
+      // 检查python-path元素是否存在
+      const pythonPathElement = document.getElementById('python-path');
+      if (pythonPathElement) {
+        pythonPathElement.value = config.pythonPath || '';
+      }
+      
       // 根据模型类型显示相应的输入框
       const apiModelSection = document.getElementById('api-model-section');
       const ollamaModelSection = document.getElementById('ollama-model-section');
@@ -142,7 +148,8 @@ async function saveConfig() {
       modelType: modelType,
       model: modelName,
       desktopPath: document.getElementById('desktop-path').value || DEFAULT_DESKTOP_PATH,
-      downloadsPath: document.getElementById('downloads-path').value || DEFAULT_DOWNLOADS_PATH
+      downloadsPath: document.getElementById('downloads-path').value || DEFAULT_DOWNLOADS_PATH,
+      pythonPath: document.getElementById('python-path').value || ''
     };
 
     const result = await window.electronAPI.saveConfig(config);
