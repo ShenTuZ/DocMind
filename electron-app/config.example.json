@@ -1,0 +1,10 @@
+{
+  "modelType": "ollama",
+  "apiUrl": "https://api.siliconflow.cn/v1/chat/completions",
+  "apiKey": "YOUR_API_KEY_HERE",
+  "model": "Qwen/Qwen3-VL-235B-A22B-Instruct",
+  "ollamaModel": "qwen3-vl:4b",
+  "desktopPath": "YOUR_DESKTOP_PATH",
+  "downloadsPath": "YOUR_DOWNLOADS_PATH",
+  "pythonPath": "YOUR_PYTHON_PATH"
+}

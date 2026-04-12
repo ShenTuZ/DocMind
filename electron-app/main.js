@@ -22,8 +22,8 @@ const DEFAULT_CONFIG = {
   apiKey: '',
   model: 'Qwen/Qwen3-VL-32B-Instruct',
   ollamaModel: 'qwen3.5:4b',
-  desktopPath: 'C:\Users\Administrator\Desktop',
-  downloadsPath: 'C:\Users\Administrator\Downloads',
+  desktopPath: '',
+  downloadsPath: '',
   pythonPath: ''
 };
 
@@ -61,11 +61,16 @@ async function connectMCP() {
   try {
     const config = loadConfigSync();
     
+    // 使用用户主目录作为默认路径
+    const userHome = process.env.USERPROFILE || process.env.HOME || '';
+    const defaultDesktop = userHome ? `${userHome}\\Desktop` : '';
+    const defaultDownloads = userHome ? `${userHome}\\Downloads` : '';
+    
     mcpTransport = new StdioClientTransport({
       command: 'npx',
       args: ['-y', '@modelcontextprotocol/server-filesystem', 
-             config.desktopPath || 'C:\\Users\\Administrator\\Desktop',
-             config.downloadsPath || 'C:\\Users\\Administrator\\Downloads']
+             config.desktopPath || defaultDesktop,
+             config.downloadsPath || defaultDownloads]
     });
 
     mcpClient = new Client({
@@ -382,11 +387,14 @@ async function callSiliconFlowAPI(config, messages, tools) {
       messagesCount: messages.length
     });
 
+    // 使用环境变量或配置中的API密钥
+    const apiKey = process.env.SILICONFLOW_API_KEY || config.apiKey;
+    
     const response = await fetch(config.apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${config.apiKey}`
+        'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify(requestBody)
     });
@@ -589,9 +597,15 @@ ipcMain.handle('send-message', async (event, userMessage, attachment = null) => 
       ? `\n\n知识库信息：\n${knowledge.map(k => `- ${k.title}: ${k.content}`).join('\n')}` 
       : '';
 
-    let systemPrompt = `你是一个智能桌面文件助手，可以帮助用户操作桌面文件系统。你有以下工具可以使用：
+    let systemPrompt = `你是一个智能桌面文件助手，可以帮助用户操作桌面文件系统，包括读取、编辑和创建文档。你有以下工具可以使用：
 
 ${tools.map(tool => `- ${tool.name}: ${tool.description}`).join('\n')}
+
+文件编辑功能说明：
+- 你可以帮助用户编辑.docx、.pdf、.pptx等文档文件
+- 支持的编辑操作包括：添加内容、修改文本、删除内容、调整格式等
+- 对于图片和文档，你可以分析内容并提供编辑建议
+- 编辑前请先读取文件内容，然后基于内容提供编辑方案
 
 当用户需要桌面操作文件时，选择适合的工具进行调用。工具调用格式如下：
 {
@@ -663,11 +677,22 @@ ${knowledgeText}
     let userContent = userMessage;
     if (attachment) {
       if (attachment.type === 'image') {
-        // 对于图片附件，使用文本格式，包含图片描述
+        // 对于图片附件，使用多模态格式，包含文本和图片数据
         const imageContent = userMessage || '请分析这张图片';
         messages.push({ 
           role: 'user', 
-          content: imageContent
+          content: [
+            {
+              type: 'text',
+              text: imageContent
+            },
+            {
+              type: 'image_url',
+              image_url: {
+                url: attachment.data
+              }
+            }
+          ]
         });
       } else {
         // 对于其他文件附件，使用文本格式，包含文件内容

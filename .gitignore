@@ -1,0 +1,14 @@
+# 忽略Vosk语音模型
+vosk-model-cn-0.22/
+
+# 忽略示例文档
+*.pdf
+
+# 全局忽略规则
+node_modules/
+dist/
+.env
+*.log
+.DS_Store
+Thumbs.db
+test_voice_simple.py

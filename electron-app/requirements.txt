@@ -1,0 +1,9 @@
+# Python依赖包列表
+PyPDF2>=2.10.0
+pymupdf>=1.23.0
+vosk>=0.3.45
+mcp-server-fetch>=2025.4.7
+requests>=2.31.0
+python-docx>=0.8.11
+pandas>=2.0.0
+python-pptx>=0.6.21

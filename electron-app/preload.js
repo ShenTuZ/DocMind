@@ -1,4 +1,5 @@
 const { contextBridge, ipcRenderer } = require('electron');
+const os = require('os');
 
 contextBridge.exposeInMainWorld('electronAPI', {
   loadConfig: () => ipcRenderer.invoke('load-config'),
@@ -23,5 +24,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getPageIndexFiles: () => ipcRenderer.invoke('get-pageindex-files'),
   deletePageIndexFile: (filePath) => ipcRenderer.invoke('delete-pageindex-file', filePath),
   chatWithPageIndex: (query, filePath) => ipcRenderer.invoke('chat-with-pageindex', query, filePath),
-  loginSuccess: (data) => ipcRenderer.send('login-success', data)
+  loginSuccess: (data) => ipcRenderer.send('login-success', data),
+  getUserHome: () => os.homedir()
 });

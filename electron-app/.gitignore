@@ -1,10 +1,15 @@
-node_modules/
-dist/
-.env
+# 特定于electron-app目录的忽略规则
+# 全局忽略规则请参考根目录的.gitignore文件
+
+# 本地配置文件
+config.json
 knowledge.json
-*.log
-.DS_Store
-Thumbs.db
+
+# 生成的数据
 rag_data/
-vosk-model-cn-0.22/
-test_voice_simple.py
+
+# Python缓存
+__pycache__/
+*.pyc
+*.pyo
+*.pyd

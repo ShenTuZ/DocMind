@@ -7,8 +7,10 @@ async function testMCP() {
     
     try {
         // 配置 MCP 连接
-        const desktopPath = 'C:\\Users\\Administrator\\Desktop';
-        const downloadsPath = 'C:\\Users\\Administrator\\Downloads';
+        // 使用用户主目录作为默认路径
+        const userHome = process.env.USERPROFILE || process.env.HOME || '';
+        const desktopPath = userHome ? `${userHome}\\Desktop` : 'C:\\Users\\Administrator\\Desktop';
+        const downloadsPath = userHome ? `${userHome}\\Downloads` : 'C:\\Users\\Administrator\\Downloads';
         
         console.log('1. 创建 MCP 传输层...');
         const transport = new StdioClientTransport({

@@ -6,11 +6,26 @@ let isVoiceRecording = false;
 let currentVoiceText = '';
 let currentAttachment = null;
 
-const DEFAULT_MODEL = 'Qwen/Qwen3-VL-32B-Instruct';
-const DEFAULT_DESKTOP_PATH = 'C:\\Users\\Administrator\\Desktop';
-const DEFAULT_DOWNLOADS_PATH = 'C:\\Users\\Administrator\\Downloads';
+const DEFAULT_MODEL = 'Qwen/Qwen3-VL-235B-A22B-Instruct';
+let DEFAULT_DESKTOP_PATH = '';
+let DEFAULT_DOWNLOADS_PATH = '';
+
+// 异步初始化默认路径
+async function initDefaultPaths() {
+  try {
+    const userHome = window.electronAPI.getUserHome ? await window.electronAPI.getUserHome() : '';
+    DEFAULT_DESKTOP_PATH = userHome ? `${userHome}\\Desktop` : '';
+    DEFAULT_DOWNLOADS_PATH = userHome ? `${userHome}\\Downloads` : '';
+  } catch (error) {
+    console.error('初始化默认路径失败:', error);
+    // 使用系统默认路径作为备选
+    DEFAULT_DESKTOP_PATH = 'C:\\Users\\' + (process.env.USERNAME || 'User') + '\\Desktop';
+    DEFAULT_DOWNLOADS_PATH = 'C:\\Users\\' + (process.env.USERNAME || 'User') + '\\Downloads';
+  }
+}
 
 async function init() {
+  await initDefaultPaths();
   await loadKnowledge();
   await loadKnowledgeStats();
   await loadConfig();
