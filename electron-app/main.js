@@ -1670,6 +1670,61 @@ app.on('window-all-closed', () => {
   }
 });
 
+ipcMain.handle('get-ollama-models', async () => {
+  try {
+    const { spawn } = require('child_process');
+    
+    return new Promise((resolve) => {
+      const ollamaProcess = spawn('ollama', ['list'], {
+        stdio: ['ignore', 'pipe', 'pipe'],
+        timeout: 10000
+      });
+      
+      let stdout = '';
+      let stderr = '';
+      
+      ollamaProcess.stdout.on('data', (data) => {
+        stdout += data.toString();
+      });
+      
+      ollamaProcess.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+      
+      ollamaProcess.on('close', (code) => {
+        if (code === 0 && stdout) {
+          try {
+            const lines = stdout.trim().split('\n');
+            const models = [];
+            
+            for (let i = 1; i < lines.length; i++) {
+              const line = lines[i].trim();
+              if (line) {
+                const parts = line.split(/\s+/);
+                if (parts.length > 0) {
+                  models.push(parts[0]);
+                }
+              }
+            }
+            
+            resolve({ success: true, models: models });
+          } catch (error) {
+            resolve({ success: false, error: '解析模型列表失败' });
+          }
+        } else {
+          resolve({ success: false, error: 'Ollama未运行或未安装' });
+        }
+      });
+      
+      ollamaProcess.on('error', () => {
+        resolve({ success: false, error: 'Ollama未运行或未安装' });
+      });
+    });
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
 app.on('before-quit', async () => {
   if (mcpClient) {
     await mcpClient.close();

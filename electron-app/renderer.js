@@ -112,13 +112,21 @@ async function loadConfig() {
       document.getElementById('desktop-path').value = config.desktopPath || '';
       document.getElementById('downloads-path').value = config.downloadsPath || '';
       
-      // 检查python-path元素是否存在
+      const apiUrlElement = document.getElementById('api-url');
+      if (apiUrlElement) {
+        apiUrlElement.value = config.apiUrl || 'https://api.siliconflow.cn/v1/chat/completions';
+      }
+      
+      const apiKeyElement = document.getElementById('api-key');
+      if (apiKeyElement) {
+        apiKeyElement.value = config.apiKey || '';
+      }
+      
       const pythonPathElement = document.getElementById('python-path');
       if (pythonPathElement) {
         pythonPathElement.value = config.pythonPath || '';
       }
       
-      // 根据模型类型显示相应的输入框
       const apiModelSection = document.getElementById('api-model-section');
       const ollamaModelSection = document.getElementById('ollama-model-section');
       
@@ -166,6 +174,16 @@ async function saveConfig() {
       downloadsPath: document.getElementById('downloads-path').value || DEFAULT_DOWNLOADS_PATH,
       pythonPath: document.getElementById('python-path').value || ''
     };
+    
+    const apiUrlElement = document.getElementById('api-url');
+    if (apiUrlElement) {
+      config.apiUrl = apiUrlElement.value || 'https://api.siliconflow.cn/v1/chat/completions';
+    }
+    
+    const apiKeyElement = document.getElementById('api-key');
+    if (apiKeyElement) {
+      config.apiKey = apiKeyElement.value || '';
+    }
 
     const result = await window.electronAPI.saveConfig(config);
     if (result.success) {
@@ -451,20 +469,57 @@ function switchTab(tab) {
 function openConfig() {
   document.getElementById('config-modal').classList.remove('hidden');
   
-  // 添加模型类型切换事件监听
   const modelTypeSelect = document.getElementById('model-type');
   const apiModelSection = document.getElementById('api-model-section');
+  const apiUrlSection = document.getElementById('api-url-section');
+  const apiKeySection = document.getElementById('api-key-section');
   const ollamaModelSection = document.getElementById('ollama-model-section');
+  const ollamaModelSelect = document.getElementById('ollama-model-name');
   
-  modelTypeSelect.addEventListener('change', function() {
+  const updateModelSections = function() {
     if (modelTypeSelect.value === 'api') {
       apiModelSection.style.display = 'block';
+      if (apiUrlSection) apiUrlSection.style.display = 'block';
+      if (apiKeySection) apiKeySection.style.display = 'block';
       ollamaModelSection.style.display = 'none';
     } else {
       apiModelSection.style.display = 'none';
+      if (apiUrlSection) apiUrlSection.style.display = 'none';
+      if (apiKeySection) apiKeySection.style.display = 'none';
       ollamaModelSection.style.display = 'block';
+      loadOllamaModels();
     }
-  });
+  };
+  
+  modelTypeSelect.addEventListener('change', updateModelSections);
+  updateModelSections();
+}
+
+async function loadOllamaModels() {
+  try {
+    const result = await window.electronAPI.getOllamaModels();
+    const ollamaModelSelect = document.getElementById('ollama-model-name');
+    
+    if (result.success && result.models.length > 0) {
+      const currentValue = ollamaModelSelect.value;
+      ollamaModelSelect.innerHTML = '';
+      
+      result.models.forEach(model => {
+        const option = document.createElement('option');
+        option.value = model;
+        option.textContent = model;
+        ollamaModelSelect.appendChild(option);
+      });
+      
+      if (result.models.includes(currentValue)) {
+        ollamaModelSelect.value = currentValue;
+      }
+    } else {
+      console.log('未找到Ollama模型:', result.error || '无可用模型');
+    }
+  } catch (error) {
+    console.error('加载Ollama模型失败:', error);
+  }
 }
 
 function closeConfig() {

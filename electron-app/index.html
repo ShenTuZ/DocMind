@@ -195,9 +195,19 @@
                 <label>API 模型名称</label>
                 <input type="text" class="form-input" id="model-name" value="Qwen/Qwen3-VL-235B-A22B-Instruct">
             </div>
+            <div class="form-group" id="api-url-section">
+                <label>API URL</label>
+                <input type="text" class="form-input" id="api-url" value="https://api.siliconflow.cn/v1/chat/completions">
+            </div>
+            <div class="form-group" id="api-key-section">
+                <label>API Key</label>
+                <input type="password" class="form-input" id="api-key" placeholder="输入API密钥">
+            </div>
             <div class="form-group" id="ollama-model-section" style="display: none;">
                 <label>Ollama 模型名称</label>
-                <input type="text" class="form-input" id="ollama-model-name" value="qwen3.5:4b">
+                <select class="form-input" id="ollama-model-name">
+                    <option value="qwen3.5:4b">qwen3.5:4b</option>
+                </select>
             </div>
             <div class="form-group">
                 <label>Desktop 路径</label>

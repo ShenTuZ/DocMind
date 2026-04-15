@@ -24,6 +24,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getPageIndexFiles: () => ipcRenderer.invoke('get-pageindex-files'),
   deletePageIndexFile: (filePath) => ipcRenderer.invoke('delete-pageindex-file', filePath),
   chatWithPageIndex: (query, filePath) => ipcRenderer.invoke('chat-with-pageindex', query, filePath),
+  getOllamaModels: () => ipcRenderer.invoke('get-ollama-models'),
   loginSuccess: (data) => ipcRenderer.send('login-success', data),
   getUserHome: () => os.homedir()
 });
