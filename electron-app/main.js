@@ -141,10 +141,10 @@ async function getDbConnection() {
   try {
     if (!dbConnection) {
       dbConnection = await mysql.createConnection({
-        host: 'localhost',
-        user: 'root',
-        password: 'syhhsyhk621', // 正确的密码
-        database: 'docmind'
+        host: process.env.DB_HOST || 'localhost',
+        user: process.env.DB_USER || 'root',
+        password: process.env.DB_PASSWORD || 'syhhsyhk621',
+        database: process.env.DB_NAME || 'docmind'
       });
       console.log('数据库连接成功');
     }

@@ -4,6 +4,7 @@
 # 本地配置文件
 config.json
 knowledge.json
+.env
 
 # 生成的数据
 rag_data/
