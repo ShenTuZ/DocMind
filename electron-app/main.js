@@ -140,10 +140,15 @@ function loadKnowledgeSync() {
 async function getDbConnection() {
   try {
     if (!dbConnection) {
+      const dbPassword = process.env.DB_PASSWORD;
+      if (!dbPassword) {
+        throw new Error('数据库密码未设置，请在.env文件中配置DB_PASSWORD');
+      }
+      
       dbConnection = await mysql.createConnection({
         host: process.env.DB_HOST || 'localhost',
         user: process.env.DB_USER || 'root',
-        password: process.env.DB_PASSWORD || 'syhhsyhk621',
+        password: dbPassword,
         database: process.env.DB_NAME || 'docmind'
       });
       console.log('数据库连接成功');
