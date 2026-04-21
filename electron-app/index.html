@@ -41,6 +41,13 @@
                         <div class="nav-card-desc">管理技能和MCP文件</div>
                     </div>
                 </div>
+                <div class="nav-card" onclick="switchTab('daily')" id="nav-daily">
+                    <div class="nav-card-icon">📄</div>
+                    <div class="nav-card-content">
+                        <div class="nav-card-title">日常文件</div>
+                        <div class="nav-card-desc">管理日常使用的Word和PDF文件</div>
+                    </div>
+                </div>
                 <div class="nav-card" onclick="openConfig()" id="nav-config">
                     <div class="nav-card-icon">⚙️</div>
                     <div class="nav-card-content">
@@ -69,6 +76,28 @@
                             <h3>已安装的技能</h3>
                             <div id="skills-list-content" class="skills-list-content">
                                 <p class="no-skills">暂无已安装的技能</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="daily-container hidden" id="daily-container">
+                <div class="card">
+                    <h2>日常文件管理</h2>
+                    <div class="daily-content">
+                        <div class="upload-section">
+                            <h3>上传日常文件</h3>
+                            <p>支持上传 Word (.docx) 和 PDF (.pdf) 文件</p>
+                            <input type="file" id="daily-file-input" multiple accept=".docx,.pdf" style="display: none;" onchange="handleDailyFileSelect(event)">
+                            <button class="upload-button" onclick="selectDailyFile()">
+                                <span class="upload-text">选择文件</span>
+                            </button>
+                            <div id="daily-upload-status" class="upload-status"></div>
+                        </div>
+                        <div class="daily-list">
+                            <h3>已上传的文件</h3>
+                            <div id="daily-list-content" class="daily-list-content">
+                                <p class="no-files">暂无已上传的文件</p>
                             </div>
                         </div>
                     </div>

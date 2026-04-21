@@ -26,5 +26,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   chatWithPageIndex: (query, filePath) => ipcRenderer.invoke('chat-with-pageindex', query, filePath),
   getOllamaModels: () => ipcRenderer.invoke('get-ollama-models'),
   loginSuccess: (data) => ipcRenderer.send('login-success', data),
-  getUserHome: () => os.homedir()
+  getUserHome: () => os.homedir(),
+  // 日常文件管理
+  uploadDailyFiles: (filePaths) => ipcRenderer.invoke('upload-daily-files', filePaths),
+  getDailyFiles: () => ipcRenderer.invoke('get-daily-files'),
+  downloadDailyFile: (filePath, filename) => ipcRenderer.invoke('download-daily-file', filePath, filename),
+  deleteDailyFile: (fileId) => ipcRenderer.invoke('delete-daily-file', fileId)
 });

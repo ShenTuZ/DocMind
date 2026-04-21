@@ -471,7 +471,15 @@ function switchTab(tab) {
     document.getElementById('knowledge-container').classList.add('hidden');
     document.getElementById('pageindex-container').classList.add('hidden');
     document.getElementById('skills-container').classList.remove('hidden');
+    document.getElementById('daily-container').classList.add('hidden');
     loadSkillsList();
+  } else if (tab === 'daily') {
+    document.getElementById('chat-container').classList.add('hidden');
+    document.getElementById('knowledge-container').classList.add('hidden');
+    document.getElementById('pageindex-container').classList.add('hidden');
+    document.getElementById('skills-container').classList.add('hidden');
+    document.getElementById('daily-container').classList.remove('hidden');
+    loadDailyFiles();
   }
 }
 
@@ -1196,6 +1204,98 @@ function useSkill(skillName, skillType) {
   // 这里可以添加使用技能的逻辑
 }
 
+// 日常文件管理相关函数
+function selectDailyFile() {
+  document.getElementById('daily-file-input').click();
+}
 
+async function handleDailyFileSelect(event) {
+  const files = event.target.files;
+  if (!files.length) return;
+
+  const uploadStatus = document.getElementById('daily-upload-status');
+  uploadStatus.textContent = '正在上传文件...';
+
+  try {
+    const filePaths = Array.from(files).map(file => file.path);
+    const result = await window.electronAPI.uploadDailyFiles(filePaths);
+    
+    if (result.success) {
+      uploadStatus.textContent = `成功上传 ${files.length} 个文件`;
+      loadDailyFiles();
+    } else {
+      uploadStatus.textContent = `上传失败: ${result.error}`;
+    }
+  } catch (error) {
+    console.error('上传日常文件失败:', error);
+    uploadStatus.textContent = '上传失败: ' + error.message;
+  }
+}
+
+async function loadDailyFiles() {
+  const dailyListContent = document.getElementById('daily-list-content');
+  
+  try {
+    const result = await window.electronAPI.getDailyFiles();
+    
+    if (!result.success || result.files.length === 0) {
+      dailyListContent.innerHTML = '<p class="no-files">暂无已上传的文件</p>';
+      return;
+    }
+
+    dailyListContent.innerHTML = result.files.map(file => {
+      const date = new Date(file.upload_date).toLocaleString('zh-CN');
+      return `
+        <div class="daily-item">
+          <div class="daily-info">
+            <div class="daily-name">${escapeHtml(file.filename)}</div>
+            <div class="daily-meta">
+              <span>类型: ${file.file_type}</span>
+              <span>大小: ${formatFileSize(file.file_size)}</span>
+              <span>上传时间: ${date}</span>
+            </div>
+          </div>
+          <div class="daily-actions">
+            <button class="daily-action-button" onclick="downloadDailyFile('${file.file_path}', '${file.filename}')">下载</button>
+            <button class="daily-action-button" onclick="deleteDailyFile(${file.id})">删除</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  } catch (error) {
+    console.error('加载日常文件列表失败:', error);
+    dailyListContent.innerHTML = '<p class="no-files">加载文件列表失败</p>';
+  }
+}
+
+async function downloadDailyFile(filePath, filename) {
+  try {
+    const result = await window.electronAPI.downloadDailyFile(filePath, filename);
+    if (result.success) {
+      alert('文件下载成功');
+    } else {
+      alert(`下载失败: ${result.error}`);
+    }
+  } catch (error) {
+    alert(`下载失败: ${error.message}`);
+  }
+}
+
+async function deleteDailyFile(fileId) {
+  if (confirm('确定要删除这个文件吗？')) {
+    try {
+      const result = await window.electronAPI.deleteDailyFile(fileId);
+      
+      if (result.success) {
+        alert('文件已成功删除');
+        loadDailyFiles();
+      } else {
+        alert(`删除失败: ${result.error}`);
+      }
+    } catch (error) {
+      alert(`删除失败: ${error.message}`);
+    }
+  }
+}
 
 document.addEventListener('DOMContentLoaded', init);

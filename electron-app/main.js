@@ -1,9 +1,10 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
 const { Client } = require('@modelcontextprotocol/sdk/client/index.js');
 const { StdioClientTransport } = require('@modelcontextprotocol/sdk/client/stdio.js');
+const mysql = require('mysql2/promise');
 require('dotenv').config();
 
 let mainWindow;
@@ -12,6 +13,7 @@ let mcpTransport = null;
 let tools = [];
 let voiceProcess = null;
 let cachedConfig = null;
+let dbConnection = null;
 
 const configPath = path.join(__dirname, 'config.json');
 const knowledgePath = path.join(__dirname, 'knowledge.json');
@@ -132,6 +134,25 @@ function loadKnowledgeSync() {
     console.error('加载知识库失败:', error);
   }
   return [];
+}
+
+// 数据库连接函数
+async function getDbConnection() {
+  try {
+    if (!dbConnection) {
+      dbConnection = await mysql.createConnection({
+        host: 'localhost',
+        user: 'root',
+        password: 'syhhsyhk621', // 正确的密码
+        database: 'docmind'
+      });
+      console.log('数据库连接成功');
+    }
+    return dbConnection;
+  } catch (error) {
+    console.error('数据库连接失败:', error);
+    throw error;
+  }
 }
 
 /**
@@ -1731,5 +1752,122 @@ app.on('before-quit', async () => {
   }
   if (voiceProcess) {
     voiceProcess.kill();
+  }
+  if (dbConnection) {
+    await dbConnection.end();
+  }
+});
+
+// 日常文件管理相关IPC处理
+
+ipcMain.handle('upload-daily-files', async (event, filePaths) => {
+  try {
+    const connection = await getDbConnection();
+    
+    // 创建存储日常文件的目录
+    const dailyFilesDir = path.join(__dirname, 'daily_files');
+    if (!fs.existsSync(dailyFilesDir)) {
+      fs.mkdirSync(dailyFilesDir, { recursive: true });
+    }
+    
+    for (const filePath of filePaths) {
+      const stats = fs.statSync(filePath);
+      const filename = path.basename(filePath);
+      const fileType = path.extname(filePath).toLowerCase();
+      const fileSize = stats.size;
+      
+      // 生成唯一的文件名，避免重复
+      const uniqueFilename = `${Date.now()}_${filename}`;
+      const destPath = path.join(dailyFilesDir, uniqueFilename);
+      
+      // 复制文件到本地目录
+      fs.copyFileSync(filePath, destPath);
+      
+      await connection.execute(
+        'INSERT INTO daily_files (filename, file_path, file_type, file_size) VALUES (?, ?, ?, ?)',
+        [filename, destPath, fileType, fileSize]
+      );
+    }
+    
+    return { success: true };
+  } catch (error) {
+    console.error('上传日常文件失败:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('get-daily-files', async () => {
+  try {
+    const connection = await getDbConnection();
+    const [rows] = await connection.execute('SELECT * FROM daily_files ORDER BY upload_date DESC');
+    return { success: true, files: rows };
+  } catch (error) {
+    console.error('获取日常文件列表失败:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('open-daily-file', async (event, filePath) => {
+  try {
+    if (fs.existsSync(filePath)) {
+      await shell.openPath(filePath);
+      return { success: true };
+    } else {
+      return { success: false, error: '文件不存在' };
+    }
+  } catch (error) {
+    console.error('打开日常文件失败:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('delete-daily-file', async (event, fileId) => {
+  try {
+    const connection = await getDbConnection();
+    
+    // 先获取文件路径
+    const [rows] = await connection.execute('SELECT file_path FROM daily_files WHERE id = ?', [fileId]);
+    if (rows.length > 0) {
+      const filePath = rows[0].file_path;
+      
+      // 删除本地文件
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    }
+    
+    // 删除数据库记录
+    await connection.execute('DELETE FROM daily_files WHERE id = ?', [fileId]);
+    return { success: true };
+  } catch (error) {
+    console.error('删除日常文件失败:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('download-daily-file', async (event, filePath, filename) => {
+  try {
+    const { dialog } = require('electron');
+    
+    if (!fs.existsSync(filePath)) {
+      return { success: false, error: '文件不存在' };
+    }
+    
+    const { filePath: savePath } = await dialog.showSaveDialog({
+      defaultPath: filename,
+      filters: [
+        { name: 'All Files', extensions: ['*'] }
+      ]
+    });
+    
+    if (savePath) {
+      fs.copyFileSync(filePath, savePath);
+      return { success: true };
+    } else {
+      return { success: false, error: '取消下载' };
+    }
+  } catch (error) {
+    console.error('下载日常文件失败:', error);
+    return { success: false, error: error.message };
   }
 });

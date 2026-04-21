@@ -35,19 +35,19 @@ git clone <repository-url>
 cd mcp/electron-app
 ```
 
-2. 安装Node.js依赖
+1. 安装Node.js依赖
 
 ```bash
 npm install
 ```
 
-3. 安装Python依赖
+1. 安装Python依赖
 
 ```bash
 pip install -r requirements.txt
 ```
 
-4. 配置应用
+1. 配置应用
 
 复制配置文件示例并填写相关信息：
 
@@ -62,7 +62,7 @@ cp config.example.json config.json
 - `downloadsPath`：下载路径
 - `pythonPath`：Python可执行文件路径
 
-5. 运行应用
+1. 运行应用
 
 ```bash
 npm start
@@ -87,6 +87,8 @@ npm start
 3. **文件分析**：上传文件或图片，AI会分析内容并回答相关问题
 4. **知识库管理**：添加文档到知识库，实现智能检索
 5. **PageIndex**：处理文档并构建索引，实现快速查询
+6. 技能（为实现完整使用）
+7. 日常文件：可以进行日常文件上传和下载
 
 ## 配置说明
 
@@ -124,3 +126,62 @@ MIT License
 ## 贡献
 
 欢迎提交Issue和Pull Request！
+
+## Git上传指南
+
+### 初始化Git仓库（如果尚未初始化）
+
+```bash
+git init
+git remote add origin <repository-url>
+```
+
+### 提交更改
+
+1. 添加文件到暂存区
+
+```bash
+git add .
+```
+
+1. 提交更改
+
+```bash
+git commit -m "提交信息"
+```
+
+1. 推送到远程仓库
+
+```bash
+git push -u origin master
+```
+
+### 分支管理
+
+1. 创建新分支
+
+```bash
+git checkout -b <branch-name>
+```
+
+1. 切换分支
+
+```bash
+git checkout <branch-name>
+```
+
+1. 合并分支
+
+```bash
+git checkout master
+git merge <branch-name>
+```
+
+### 常见Git命令
+
+- 查看状态：`git status`
+- 查看日志：`git log`
+- 查看差异：`git diff`
+- 撤销更改：`git checkout -- <file>`
+- 撤销暂存：`git reset HEAD <file>`
+

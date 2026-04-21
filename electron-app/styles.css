@@ -143,6 +143,103 @@ body {
     height: 100%;
 }
 
+.daily-container {
+    padding: 24px;
+    overflow-y: auto;
+    height: 100%;
+}
+
+.daily-content {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+}
+
+.daily-list {
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    backdrop-filter: blur(10px);
+}
+
+.daily-list h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin-bottom: 16px;
+}
+
+.daily-list-content {
+    min-height: 200px;
+}
+
+.no-files {
+    text-align: center;
+    color: #999;
+    font-size: 14px;
+    margin: 40px 0;
+}
+
+.daily-item {
+    background: linear-gradient(135deg, rgba(3, 155, 229, 0.05) 0%, rgba(2, 136, 209, 0.02) 100%);
+    border: 1px solid rgba(3, 155, 229, 0.2);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.3s ease;
+}
+
+.daily-item:hover {
+    border-color: #039BE5;
+    box-shadow: 0 4px 12px rgba(3, 155, 229, 0.15);
+}
+
+.daily-info {
+    flex: 1;
+}
+
+.daily-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin-bottom: 4px;
+}
+
+.daily-meta {
+    font-size: 12px;
+    color: #666;
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.daily-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.daily-action-button {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(3, 155, 229, 0.3);
+    color: #039BE5;
+    padding: 6px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.daily-action-button:hover {
+    background: #039BE5;
+    color: white;
+    transform: translateY(-1px);
+}
+
 .skills-content {
     display: flex;
     flex-direction: column;
