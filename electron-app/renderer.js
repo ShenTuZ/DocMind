@@ -454,15 +454,24 @@ function switchTab(tab) {
     document.getElementById('chat-container').classList.remove('hidden');
     document.getElementById('knowledge-container').classList.add('hidden');
     document.getElementById('pageindex-container').classList.add('hidden');
+    document.getElementById('skills-container').classList.add('hidden');
   } else if (tab === 'knowledge') {
     document.getElementById('chat-container').classList.add('hidden');
     document.getElementById('knowledge-container').classList.remove('hidden');
     document.getElementById('pageindex-container').classList.add('hidden');
+    document.getElementById('skills-container').classList.add('hidden');
   } else if (tab === 'pageindex') {
     document.getElementById('chat-container').classList.add('hidden');
     document.getElementById('knowledge-container').classList.add('hidden');
     document.getElementById('pageindex-container').classList.remove('hidden');
+    document.getElementById('skills-container').classList.add('hidden');
     renderPageIndexList();
+  } else if (tab === 'skills') {
+    document.getElementById('chat-container').classList.add('hidden');
+    document.getElementById('knowledge-container').classList.add('hidden');
+    document.getElementById('pageindex-container').classList.add('hidden');
+    document.getElementById('skills-container').classList.remove('hidden');
+    loadSkillsList();
   }
 }
 
@@ -1104,5 +1113,89 @@ function setupKnowledgeStreamListener() {
     }
   });
 }
+
+// 技能管理相关函数
+function selectSkillFile() {
+  document.getElementById('skill-file-input').click();
+}
+
+async function handleSkillFileSelect(event) {
+  const files = event.target.files;
+  if (!files.length) return;
+
+  const uploadStatus = document.getElementById('skill-upload-status');
+  uploadStatus.textContent = '正在上传技能文件...';
+
+  try {
+    // 这里可以添加上传到服务器的逻辑
+    // 目前只是模拟上传成功
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    uploadStatus.textContent = `成功上传 ${files.length} 个技能文件`;
+    
+    // 重新加载技能列表
+    loadSkillsList();
+  } catch (error) {
+    console.error('上传技能文件失败:', error);
+    uploadStatus.textContent = '上传失败: ' + error.message;
+  }
+}
+
+async function loadSkillsList() {
+  const skillsListContent = document.getElementById('skills-list-content');
+  
+  try {
+    // 这里可以添加从服务器获取技能列表的逻辑
+    // 目前只是模拟数据
+    const mockSkills = [
+      { name: '天气查询', type: 'skill.json' },
+      { name: '计算器', type: 'skill.json' },
+      { name: '翻译', type: 'mcp' }
+    ];
+
+    if (mockSkills.length === 0) {
+      skillsListContent.innerHTML = '<p class="no-skills">暂无已安装的技能</p>';
+      return;
+    }
+
+    skillsListContent.innerHTML = mockSkills.map(skill => `
+      <div class="skill-item">
+        <div class="skill-info">
+          <div class="skill-name">${skill.name}</div>
+          <div class="skill-type ${skill.type === 'skill.json' ? 'type-skill' : 'type-mcp'}">
+            ${skill.type === 'skill.json' ? '技能' : 'MCP'}
+          </div>
+        </div>
+        <div class="skill-actions">
+          <button class="skill-action-button use-button" onclick="useSkill('${skill.name}', '${skill.type}')">使用</button>
+          <button class="skill-action-button" onclick="editSkill('${skill.name}')">编辑</button>
+          <button class="skill-action-button" onclick="deleteSkill('${skill.name}')">删除</button>
+        </div>
+      </div>
+    `).join('');
+  } catch (error) {
+    console.error('加载技能列表失败:', error);
+    skillsListContent.innerHTML = '<p class="no-skills">加载技能列表失败</p>';
+  }
+}
+
+function editSkill(skillName) {
+  alert(`编辑技能: ${skillName}`);
+  // 这里可以添加编辑技能的逻辑
+}
+
+function deleteSkill(skillName) {
+  if (confirm(`确定要删除技能 "${skillName}" 吗？`)) {
+    // 这里可以添加删除技能的逻辑
+    loadSkillsList();
+  }
+}
+
+function useSkill(skillName, skillType) {
+  alert(`使用${skillType === 'skill.json' ? '技能' : 'MCP'}: ${skillName}`);
+  // 这里可以添加使用技能的逻辑
+}
+
+
 
 document.addEventListener('DOMContentLoaded', init);

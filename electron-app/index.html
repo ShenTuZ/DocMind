@@ -34,6 +34,13 @@
                         <div class="nav-card-desc">无向量RAG文档处理</div>
                     </div>
                 </div>
+                <div class="nav-card" onclick="switchTab('skills')" id="nav-skills">
+                    <div class="nav-card-icon">🧠</div>
+                    <div class="nav-card-content">
+                        <div class="nav-card-title">技能</div>
+                        <div class="nav-card-desc">管理技能和MCP文件</div>
+                    </div>
+                </div>
                 <div class="nav-card" onclick="openConfig()" id="nav-config">
                     <div class="nav-card-icon">⚙️</div>
                     <div class="nav-card-content">
@@ -45,6 +52,28 @@
         </div>
 
         <div class="main-content">
+            <div class="skills-container hidden" id="skills-container">
+                <div class="card">
+                    <h2>技能管理</h2>
+                    <div class="skills-content">
+                        <div class="upload-section">
+                            <h3>上传技能文件</h3>
+                            <p>支持上传 skill.json 文件和 MCP 文件</p>
+                            <input type="file" id="skill-file-input" multiple accept=".json,.mcp" style="display: none;" onchange="handleSkillFileSelect(event)">
+                            <button class="upload-button" onclick="selectSkillFile()">
+                                <span class="upload-text">选择文件</span>
+                            </button>
+                            <div id="skill-upload-status" class="upload-status"></div>
+                        </div>
+                        <div class="skills-list">
+                            <h3>已安装的技能</h3>
+                            <div id="skills-list-content" class="skills-list-content">
+                                <p class="no-skills">暂无已安装的技能</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <div class="chat-container" id="chat-container">
                 <div class="chat-card">
                     <div class="chat-hint">
