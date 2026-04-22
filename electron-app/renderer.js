@@ -455,16 +455,19 @@ function switchTab(tab) {
     document.getElementById('knowledge-container').classList.add('hidden');
     document.getElementById('pageindex-container').classList.add('hidden');
     document.getElementById('skills-container').classList.add('hidden');
+    document.getElementById('daily-container').classList.add('hidden');
   } else if (tab === 'knowledge') {
     document.getElementById('chat-container').classList.add('hidden');
     document.getElementById('knowledge-container').classList.remove('hidden');
     document.getElementById('pageindex-container').classList.add('hidden');
     document.getElementById('skills-container').classList.add('hidden');
+    document.getElementById('daily-container').classList.add('hidden');
   } else if (tab === 'pageindex') {
     document.getElementById('chat-container').classList.add('hidden');
     document.getElementById('knowledge-container').classList.add('hidden');
     document.getElementById('pageindex-container').classList.remove('hidden');
     document.getElementById('skills-container').classList.add('hidden');
+    document.getElementById('daily-container').classList.add('hidden');
     renderPageIndexList();
   } else if (tab === 'skills') {
     document.getElementById('chat-container').classList.add('hidden');
