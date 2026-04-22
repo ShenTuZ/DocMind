@@ -17,7 +17,7 @@ class VectorlessRAG:
         """初始化无向量RAG"""
         self.structure_file = structure_file
         self.structure = self.load_structure()
-        self.model = config_data.get('model', "Qwen/Qwen3-VL-235B-A22B-Instruct")
+        self.model = config_data.get('model', "Qwen/Qwen3-VL-30B-A3B-Instruct")
     
     def load_structure(self):
         """加载文档结构"""
