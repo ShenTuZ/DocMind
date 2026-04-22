@@ -6,7 +6,7 @@ let isVoiceRecording = false;
 let currentVoiceText = '';
 let currentAttachment = null;
 
-const DEFAULT_MODEL = 'Qwen/Qwen3-VL-235B-A22B-Instruct';
+const DEFAULT_MODEL = 'Qwen/Qwen3-VL-30B-A3B-Instruct';
 let DEFAULT_DESKTOP_PATH = '';
 let DEFAULT_DOWNLOADS_PATH = '';
 

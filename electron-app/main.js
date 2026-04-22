@@ -22,7 +22,7 @@ const DEFAULT_CONFIG = {
   modelType: 'api',
   apiUrl: 'https://api.siliconflow.cn/v1/chat/completions',
   apiKey: '',
-  model: 'Qwen/Qwen3-VL-32B-Instruct',
+  model: 'Qwen/Qwen3-VL-30B-A3B-Instruct',
   ollamaModel: 'qwen3.5:4b',
   desktopPath: '',
   downloadsPath: '',
