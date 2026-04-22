@@ -12,3 +12,6 @@ dist/
 .DS_Store
 Thumbs.db
 test_voice_simple.py
+
+# 配置文件（包含敏感信息）
+config.json
